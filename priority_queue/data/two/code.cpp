@@ -10,7 +10,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <algorithm>
-#include "priority_queue.hpp"
+#include "../../priority_queue.hpp"
 
 using namespace std;
 

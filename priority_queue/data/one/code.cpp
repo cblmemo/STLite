@@ -3,7 +3,7 @@
 #include <ctime>
 #include <cstdlib>
 
-#include "priority_queue.hpp"
+#include "../../priority_queue.hpp"
 
 void TestConstructorAndPush()
 {
