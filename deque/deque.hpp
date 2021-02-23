@@ -43,7 +43,7 @@ namespace sjtu {
             
             Element() = delete;
             
-            Element(const T &_value, Element *_pre = nullptr, Element *_next = nullptr) : preElement(_pre), nextElement(_next) {
+            explicit Element(const T &_value, Element *_pre = nullptr, Element *_next = nullptr) : preElement(_pre), nextElement(_next) {
                 value = new T(_value);
             }
             
@@ -180,7 +180,7 @@ namespace sjtu {
             }
             
             bool eraseElement(deque<T> *dq, int index) {
-                if (elementNum <= 0)throw container_is_empty();
+                if (elementNum == 0)throw container_is_empty();
                 if (elementNum == 1) {
                     delete elementHead;
                     elementHead = nullptr;
@@ -219,9 +219,6 @@ namespace sjtu {
                         if (this == dq->blockTail)dq->blockTail = this->preBlock;
                         preBlock->mergeBlock();
                         dq->blockNum--;
-                    }
-                    else {
-                        //do nothing...
                     }
                     return true;
                 }
@@ -305,13 +302,13 @@ namespace sjtu {
             size_t nowIndex = -1;//index in the whole deque
         
         public:
-            iterator() {}
+            iterator() = default;
             
             iterator(deque<T> *_ptr, Block *_nowBlock, Element *_nowElement, int _nowIndex) : ptr(_ptr), nowBlock(_nowBlock), nowElement(_nowElement), nowIndex(_nowIndex) {}
             
             iterator(const iterator &o) : invalid(o.invalid), ptr(o.ptr), nowBlock(o.nowBlock), nowElement(o.nowElement), nowIndex(o.nowIndex) {}
-            
-            iterator(bool _invalid) : invalid(_invalid) {}
+    
+            explicit iterator(bool _invalid) : invalid(_invalid) {}
             
             iterator &operator=(const iterator &o) {
                 if (this == &o)return *this;
@@ -473,7 +470,7 @@ namespace sjtu {
             size_t nowIndex = -1;//index in the whole deque
         
         public:
-            const_iterator() {}
+            const_iterator() = default;
             
             const_iterator(const deque<T> *_ptr, Block *_nowBlock, Element *_nowElement, int _nowIndex) : ptr(_ptr), nowBlock(_nowBlock), nowElement(_nowElement), nowIndex(_nowIndex) {}
             
@@ -481,7 +478,7 @@ namespace sjtu {
             
             const_iterator(const iterator &o) : invalid(o.invalid), ptr(o.ptr), nowBlock(o.nowBlock), nowElement(o.nowElement), nowIndex(o.nowIndex) {}
             
-            const_iterator(bool _invalid) : invalid(_invalid) {}
+            explicit const_iterator(bool _invalid) : invalid(_invalid) {}
             
             const_iterator &operator=(const const_iterator &o) {
                 if (this == &o)return *this;
@@ -619,7 +616,7 @@ namespace sjtu {
             }
         };
         
-        deque() {}
+        deque() = default;
         
         deque(const deque &o) {
             Block *cur = o.blockHead;
@@ -752,6 +749,7 @@ namespace sjtu {
             Block *tempDelete = blockHead;
             while (blockHead != nullptr) {
                 blockHead = blockHead->nextBlock;
+                tempDelete->clearElement();
                 delete tempDelete;
                 tempDelete = blockHead;
             }
@@ -790,7 +788,7 @@ namespace sjtu {
             if (pos.invalid)throw invalid_iterator();
             if (pos.nowIndex < 0 || pos.nowIndex >= len)throw invalid_iterator();
             if (pos.ptr != this)throw invalid_iterator();
-            bool flag = (pos.nowIndex == len - 1) ? true : false;
+            bool flag = pos.nowIndex == len - 1;
             int index;
             Block *now = findBlock(pos.nowIndex, index);
             if (now->eraseElement(this, index))now = findBlock(pos.nowIndex, index);
