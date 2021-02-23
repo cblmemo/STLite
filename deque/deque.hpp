@@ -307,7 +307,23 @@ namespace sjtu {
             iterator(deque<T> *_ptr, Block *_nowBlock, Element *_nowElement, int _nowIndex) : ptr(_ptr), nowBlock(_nowBlock), nowElement(_nowElement), nowIndex(_nowIndex) {}
             
             iterator(const iterator &o) : invalid(o.invalid), ptr(o.ptr), nowBlock(o.nowBlock), nowElement(o.nowElement), nowIndex(o.nowIndex) {}
-    
+            
+            iterator(deque<T> *_ptr, int _nowIndex) : ptr(_ptr), nowIndex(_nowIndex) {
+                if (nowIndex > ptr->len)invalid = true;
+                else {
+                    if (ptr->blockNum == 0)ptr->initialize();
+                    int now = ptr->blockHead->elementNum;
+                    Block *nowPTR = ptr->blockHead;
+                    while (now <= nowIndex) {
+                        now += nowPTR->nextBlock->elementNum;
+                        nowPTR = nowPTR->nextBlock;
+                    }
+                    nowBlock = nowPTR;
+                    int index = nowIndex - (now - nowPTR->elementNum);
+                    nowElement = nowBlock->findElement(index);
+                }
+            }
+            
             explicit iterator(bool _invalid) : invalid(_invalid) {}
             
             iterator &operator=(const iterator &o) {
@@ -327,16 +343,12 @@ namespace sjtu {
              */
             iterator operator+(const int &n) const {
                 if (nowIndex + n > ptr->len)return iterator(true);
-                iterator temp(*this);
-                for (int i = 0; i < n; i++)temp++;
-                return temp;
+                return iterator(ptr, nowIndex + n);
             }
             
             iterator operator-(const int &n) const {
                 if (nowIndex < n)return iterator(true);
-                iterator temp(*this);
-                for (int i = 0; i < n; i++)temp++;
-                return temp;
+                return iterator(ptr, nowIndex - n);
             }
             
             // return th distance between two iterator,
@@ -351,7 +363,8 @@ namespace sjtu {
                     invalid = true;
                     return *this;
                 }
-                for (int i = 0; i < n; i++)(*this)++;
+                iterator temp = (*this) + n;
+                (*this) = temp;
                 return *this;
             }
             
@@ -360,7 +373,8 @@ namespace sjtu {
                     invalid = true;
                     return *this;
                 }
-                for (int i = 0; i < n; i++)(*this)--;
+                iterator temp = (*this) - n;
+                (*this) = temp;
                 return *this;
             }
             
@@ -478,6 +492,21 @@ namespace sjtu {
             
             const_iterator(const iterator &o) : invalid(o.invalid), ptr(o.ptr), nowBlock(o.nowBlock), nowElement(o.nowElement), nowIndex(o.nowIndex) {}
             
+            const_iterator(deque<T> *_ptr, int _nowIndex) : ptr(_ptr), nowIndex(_nowIndex) {
+                if (nowIndex > ptr->len)invalid = true;
+                else {
+                    int now = ptr->blockHead->elementNum;
+                    Block *nowPTR = ptr->blockHead;
+                    while (now <= nowIndex) {
+                        now += nowPTR->nextBlock->elementNum;
+                        nowPTR = nowPTR->nextBlock;
+                    }
+                    nowBlock = nowPTR;
+                    int index = nowIndex - (now - nowPTR->elementNum);
+                    nowElement = nowBlock->findElement(index);
+                }
+            }
+            
             explicit const_iterator(bool _invalid) : invalid(_invalid) {}
             
             const_iterator &operator=(const const_iterator &o) {
@@ -494,16 +523,12 @@ namespace sjtu {
             
             const_iterator operator+(const int &n) const {
                 if (nowIndex + n > ptr->len)return const_iterator(true);
-                const_iterator temp(*this);
-                for (int i = 0; i < n; i++)temp++;
-                return temp;
+                return const_iterator(ptr, nowIndex + n);
             }
             
             const_iterator operator-(const int &n) const {
                 if (nowIndex < n)return const_iterator(true);
-                const_iterator temp(*this);
-                for (int i = 0; i < n; i++)temp--;
-                return temp;
+                return const_iterator(ptr, nowIndex - n);
             }
             
             int operator-(const const_iterator &rhs) const {
@@ -516,7 +541,8 @@ namespace sjtu {
                     invalid = true;
                     return *this;
                 }
-                for (int i = 0; i < n; i++)(*this)++;
+                const_iterator temp = (*this) + n;
+                (*this) = temp;
                 return *this;
             }
             
@@ -525,7 +551,8 @@ namespace sjtu {
                     invalid = true;
                     return *this;
                 }
-                for (int i = 0; i < n; i++)(*this)--;
+                const_iterator temp = (*this) - n;
+                (*this) = temp;
                 return *this;
             }
             
