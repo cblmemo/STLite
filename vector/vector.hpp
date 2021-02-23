@@ -337,6 +337,7 @@ namespace sjtu {
             delete (*(store + pos.pos));
             for (int i = pos.pos; i < tail - 1; i++)store[i] = store[i + 1];
             tail--;
+            if ((tail < (length / 2)))halve_space();
             return pos;
         }
         
