@@ -1,9 +1,53 @@
 #include <iostream>
 #include <string>
 #include <sstream>
+#include <cstdlib>
+#include "priority_queue//priority_queue.hpp"
 #include "deque/deque.hpp"
 
 using namespace std;
+
+void commandLinePriorityQueue() {
+    sjtu::priority_queue<int> pq;
+    string cmd;
+    while (getline(cin, cmd)) {
+        stringstream ss(cmd);
+        string ty;
+        ss >> ty;
+        if (ty == "fill") {
+            int va;
+            ss >> va;
+            for (int i = 0; i < va; i++) {
+                pq.push(i);
+            }
+            cout << "Fill successful." << endl;
+        }
+        else if (ty == "top") {
+            cout << pq.top() << endl;
+        }
+        else if (ty == "pop") {
+            pq.pop();
+        }
+        else if (ty == "popall") {
+            int cnt = 0;
+            while (!pq.empty()) {
+                cout << "Erase No." << ++cnt << " Element " << pq.top();
+                cout.flush();
+                pq.pop();
+                cout << " successful." << endl;
+            }
+        }
+        else if (ty == "push") {
+            int va;
+            ss >> va;
+            pq.push(va);
+        }
+        else if (ty == "sz") {
+            cout << pq.size() << endl;
+        }
+        else cout << "Invalid" << endl;
+    }
+}
 
 void commandLineDeque() {
     sjtu::deque<int> dq;
@@ -17,6 +61,16 @@ void commandLineDeque() {
             ss >> va;
             for (int i = 0; i < va; i++) {
                 dq.push_back(i);
+            }
+            cout << "Fill successful." << endl;
+        }
+        else if (ty == "randomfill") {
+            int va;
+            ss >> va;
+            for (int i = 0; i < va; i++) {
+                int pos = (i == 0) ? 0 : (rand() % dq.size());
+                sjtu::deque<int>::iterator it(&dq, pos);
+                dq.insert(it, i);
             }
             cout << "Fill successful." << endl;
         }
@@ -92,6 +146,7 @@ void commandLineDeque() {
 int main() {
     cout << "[System]Programme initializing..." << endl;
     cout << "[Info]Welcome to RainyMemory's STLite project!" << endl;
-    commandLineDeque();
+    commandLinePriorityQueue();
+//    commandLineDeque();
     return 0;
 }
