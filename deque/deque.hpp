@@ -3,6 +3,8 @@
 
 #include "exceptions.hpp"
 
+//this deque have passed point 1 & 2 & 3 & 4 & 5
+
 #include <cstddef>
 
 #define debug
@@ -21,19 +23,17 @@ namespace sjtu {
     template<class T>
     class deque {
     private:
-//        enum sizeInfo {
-//            BLOCK_SIZE = 320,
-//            SPLIT_REMAIN = 160,
-//            MERGE_THRESHOLD = 288
-//        };
-        
         enum sizeInfo {
-            BLOCK_SIZE = 4,
-            SPLIT_REMAIN = 2,
-            MERGE_THRESHOLD = 3
+            BLOCK_SIZE = 320,
+            SPLIT_REMAIN = 160,
+            MERGE_THRESHOLD = 288
         };
-        
-        class Block;
+//
+//        enum sizeInfo {
+//            BLOCK_SIZE = 4,
+//            SPLIT_REMAIN = 2,
+//            MERGE_THRESHOLD = 3
+//        };
         
         class Element {
         public:
@@ -122,7 +122,6 @@ namespace sjtu {
                 if (elementNum == 0) {
                     elementHead = nextBlock->elementHead;
                     elementTail = nextBlock->elementTail;
-                    elementNum = nextBlock->elementNum;
                 }
                 else if (nextBlock->elementNum == 0) {
                     //do nothing...
@@ -132,7 +131,13 @@ namespace sjtu {
                     nextBlock->elementHead->preElement = elementTail;
                     elementTail = nextBlock->elementTail;
                 }
-                delete nextBlock;
+                elementNum += nextBlock->elementNum;
+                nextBlock->elementHead = nullptr;
+                nextBlock->elementTail = nullptr;
+                if (nextBlock->nextBlock != nullptr)nextBlock->nextBlock->preBlock = this;
+                Block *temp = nextBlock;
+                nextBlock = nextBlock->nextBlock;
+                delete temp;
             }
             
             Element *findElement(int index) {
@@ -232,8 +237,12 @@ namespace sjtu {
             }
             
             ~Block() {
-                if (preBlock != nullptr)preBlock->nextBlock = nextBlock;
-                if (nextBlock != nullptr)nextBlock->preBlock = preBlock;
+                Element *tempDelete;
+                while (elementHead != nullptr) {
+                    tempDelete = elementHead;
+                    elementHead = elementHead->nextElement;
+                    delete tempDelete;
+                }
             }
 
 #ifdef debug
@@ -254,24 +263,35 @@ namespace sjtu {
         
         Block *blockHead = nullptr;//point to the first block
         Block *blockTail = nullptr;//point to the last block
-        size_t len = 0;
-        size_t blockNum = 0;
+        int len = 0;
+        int blockNum = 0;
         
-        Block *findBlock(const size_t &pos, int &index) const {
-            int now = blockHead->elementNum;
-            Block *nowPTR = blockHead;
-            while (now <= pos) {
-                now += nowPTR->nextBlock->elementNum;
-                nowPTR = nowPTR->nextBlock;
+        Block *findBlock(const size_t &_pos, int &index) const {
+            int pos = _pos;
+            if (pos == 0) {
+                index = 0;
+                return blockHead;
             }
-            index = pos - (now - nowPTR->elementNum);
-            return nowPTR;
+            else if (pos == len - 1) {
+                index = blockTail->elementNum - 1;
+                return blockTail;
+            }
+            Block *cur = blockHead;
+            int cnt = pos;
+            while (cur->elementNum <= cnt) {
+                cnt -= cur->elementNum;
+                if (cur->nextBlock == nullptr)break;
+                cur = cur->nextBlock;
+            }
+            index = cnt;
+            return cur;
         }
         
         void initialize() {
             blockHead = new Block(0, nullptr, nullptr, nullptr, nullptr);
             blockTail = blockHead;
             blockNum = 1;
+            len = 0;
         }
         
         void pushBackBlock(Block *o) {
@@ -299,7 +319,7 @@ namespace sjtu {
             deque<T> *ptr = nullptr;
             Block *nowBlock = nullptr;
             Element *nowElement = nullptr;
-            size_t nowIndex = -1;//index in the whole deque
+            int nowIndex = -1;//index in the whole deque
         
         public:
             iterator() = default;
@@ -309,17 +329,14 @@ namespace sjtu {
             iterator(const iterator &o) : invalid(o.invalid), ptr(o.ptr), nowBlock(o.nowBlock), nowElement(o.nowElement), nowIndex(o.nowIndex) {}
             
             iterator(deque<T> *_ptr, int _nowIndex) : ptr(_ptr), nowIndex(_nowIndex) {
-                if (nowIndex > ptr->len)invalid = true;
+                if (nowIndex > ptr->len)throw invalid_iterator();
+                else if (nowIndex == ptr->len) {
+                    //end()
+                }
                 else {
                     if (ptr->blockNum == 0)ptr->initialize();
-                    int now = ptr->blockHead->elementNum;
-                    Block *nowPTR = ptr->blockHead;
-                    while (now <= nowIndex) {
-                        now += nowPTR->nextBlock->elementNum;
-                        nowPTR = nowPTR->nextBlock;
-                    }
-                    nowBlock = nowPTR;
-                    int index = nowIndex - (now - nowPTR->elementNum);
+                    int index;
+                    nowBlock = ptr->findBlock(nowIndex, index);
                     nowElement = nowBlock->findElement(index);
                 }
             }
@@ -342,12 +359,12 @@ namespace sjtu {
              * as well as operator-
              */
             iterator operator+(const int &n) const {
-                if (nowIndex + n > ptr->len)return iterator(true);
+                if (nowIndex + n > ptr->len || nowIndex + n < 0)throw invalid_iterator();
                 return iterator(ptr, nowIndex + n);
             }
             
             iterator operator-(const int &n) const {
-                if (nowIndex < n)return iterator(true);
+                if (nowIndex - n > ptr->len || nowIndex - n < 0)throw invalid_iterator();
                 return iterator(ptr, nowIndex - n);
             }
             
@@ -359,20 +376,14 @@ namespace sjtu {
             }
             
             iterator &operator+=(const int &n) {
-                if (nowIndex + n > ptr->len) {
-                    invalid = true;
-                    return *this;
-                }
+                if (nowIndex + n > ptr->len || nowIndex + n < 0)throw invalid_iterator();
                 iterator temp = (*this) + n;
                 (*this) = temp;
                 return *this;
             }
             
             iterator &operator-=(const int &n) {
-                if (nowIndex < n) {
-                    invalid = true;
-                    return *this;
-                }
+                if (nowIndex - n > ptr->len || nowIndex - n < 0)throw invalid_iterator();
                 iterator temp = (*this) - n;
                 (*this) = temp;
                 return *this;
@@ -395,10 +406,7 @@ namespace sjtu {
             }
             
             iterator &operator++() {
-                if (nowIndex == ptr->len) {
-                    invalid = true;
-                    return *this;
-                }
+                if (nowIndex == ptr->len)throw invalid_iterator();
                 if (nowElement->nextElement == nullptr) {
                     nowBlock = nowBlock->nextBlock;
                     if (nowBlock != nullptr)nowElement = nowBlock->elementHead;
@@ -410,41 +418,47 @@ namespace sjtu {
             }
             
             iterator operator--(int) {
-                if (nowIndex == 0) {
-                    invalid = true;
-                    return *this;
-                }
+                if (nowIndex == 0)throw invalid_iterator();
                 iterator temp(*this);
-                if (nowElement->preElement == nullptr) {
-                    nowBlock = nowBlock->preBlock;
+                if (nowBlock != nullptr) {
+                    if (nowElement->preElement == nullptr) {
+                        nowBlock = nowBlock->preBlock;
+                        nowElement = nowBlock->elementTail;
+                    }
+                    else nowElement = nowElement->preElement;
+                }
+                else {
+                    nowBlock = ptr->blockTail;
                     nowElement = nowBlock->elementTail;
                 }
-                else nowElement = nowElement->preElement;
                 nowIndex--;
                 return temp;
             }
             
             iterator &operator--() {
-                if (nowIndex == 0) {
-                    invalid = true;
-                    return *this;
+                if (nowIndex == 0)throw invalid_iterator();
+                if (nowBlock != nullptr) {
+                    if (nowElement->preElement == nullptr) {
+                        nowBlock = nowBlock->preBlock;
+                        nowElement = nowBlock->elementTail;
+                    }
+                    else nowElement = nowElement->preElement;
                 }
-                if (nowElement->preElement == nullptr) {
-                    nowBlock = nowBlock->preBlock;
+                else {
+                    nowBlock = ptr->blockTail;
                     nowElement = nowBlock->elementTail;
                 }
-                else nowElement = nowElement->preElement;
                 nowIndex--;
                 return *this;
             }
             
             T &operator*() const {
-                if (invalid)throw invalid_iterator();
+                if (invalid || nowIndex >= ptr->len || nowIndex < 0)throw invalid_iterator();
                 return *(nowElement->value);
             }
             
             T *operator->() const {
-                if (invalid)throw invalid_iterator();
+                if (invalid || nowIndex >= ptr->len || nowIndex < 0)throw invalid_iterator();
                 return nowElement->value;
             }
             
@@ -481,7 +495,7 @@ namespace sjtu {
             const deque<T> *ptr = nullptr;
             Block *nowBlock = nullptr;
             Element *nowElement = nullptr;
-            size_t nowIndex = -1;//index in the whole deque
+            int nowIndex = -1;//index in the whole deque
         
         public:
             const_iterator() = default;
@@ -492,17 +506,15 @@ namespace sjtu {
             
             const_iterator(const iterator &o) : invalid(o.invalid), ptr(o.ptr), nowBlock(o.nowBlock), nowElement(o.nowElement), nowIndex(o.nowIndex) {}
             
-            const_iterator(deque<T> *_ptr, int _nowIndex) : ptr(_ptr), nowIndex(_nowIndex) {
-                if (nowIndex > ptr->len)invalid = true;
+            const_iterator(const deque<T> *_ptr, int _nowIndex) : ptr(_ptr), nowIndex(_nowIndex) {
+                if (nowIndex > ptr->len)throw invalid_iterator();
+                else if (nowIndex == ptr->len) {
+                    //end()
+                }
                 else {
-                    int now = ptr->blockHead->elementNum;
-                    Block *nowPTR = ptr->blockHead;
-                    while (now <= nowIndex) {
-                        now += nowPTR->nextBlock->elementNum;
-                        nowPTR = nowPTR->nextBlock;
-                    }
-                    nowBlock = nowPTR;
-                    int index = nowIndex - (now - nowPTR->elementNum);
+                    if (ptr->blockNum == 0)throw invalid_iterator();
+                    int index;
+                    nowBlock = ptr->findBlock(nowIndex, index);
                     nowElement = nowBlock->findElement(index);
                 }
             }
@@ -511,23 +523,21 @@ namespace sjtu {
             
             const_iterator &operator=(const const_iterator &o) {
                 if (this == &o)return *this;
-                if (ptr != o.ptr)invalid = true;
-                else {
-                    invalid = o.invalid;
-                    nowBlock = o.nowBlock;
-                    nowElement = o.nowElement;
-                    nowIndex = o.nowIndex;
-                }
+                ptr = o.ptr;
+                invalid = o.invalid;
+                nowBlock = o.nowBlock;
+                nowElement = o.nowElement;
+                nowIndex = o.nowIndex;
                 return *this;
             }
             
             const_iterator operator+(const int &n) const {
-                if (nowIndex + n > ptr->len)return const_iterator(true);
+                if (nowIndex + n > ptr->len || nowIndex + n < 0)throw invalid_iterator();
                 return const_iterator(ptr, nowIndex + n);
             }
             
             const_iterator operator-(const int &n) const {
-                if (nowIndex < n)return const_iterator(true);
+                if (nowIndex - n > ptr->len || nowIndex - n < 0)throw invalid_iterator();
                 return const_iterator(ptr, nowIndex - n);
             }
             
@@ -537,30 +547,21 @@ namespace sjtu {
             }
             
             const_iterator &operator+=(const int &n) {
-                if (nowIndex + n > ptr->len) {
-                    invalid = true;
-                    return *this;
-                }
+                if (nowIndex + n > ptr->len || nowIndex + n < 0)throw invalid_iterator();
                 const_iterator temp = (*this) + n;
                 (*this) = temp;
                 return *this;
             }
             
             const_iterator &operator-=(const int &n) {
-                if (nowIndex < n) {
-                    invalid = true;
-                    return *this;
-                }
+                if (nowIndex - n > ptr->len || nowIndex - n < 0)throw invalid_iterator();
                 const_iterator temp = (*this) - n;
                 (*this) = temp;
                 return *this;
             }
             
             const_iterator operator++(int) {
-                if (nowIndex == ptr->len) {
-                    invalid = true;
-                    return *this;
-                }
+                if (nowIndex == ptr->len)throw invalid_iterator();
                 const_iterator temp(*this);
                 if (nowElement->nextElement == nullptr) {
                     nowBlock = nowBlock->nextBlock;
@@ -573,10 +574,7 @@ namespace sjtu {
             }
             
             const_iterator &operator++() {
-                if (nowIndex == ptr->len) {
-                    invalid = true;
-                    return *this;
-                }
+                if (nowIndex == ptr->len)throw invalid_iterator();
                 if (nowElement->nextElement == nullptr) {
                     nowBlock = nowBlock->nextBlock;
                     if (nowBlock != nullptr)nowElement = nowBlock->elementHead;
@@ -588,41 +586,47 @@ namespace sjtu {
             }
             
             const_iterator operator--(int) {
-                if (nowIndex == 0) {
-                    invalid = true;
-                    return *this;
-                }
+                if (nowIndex == 0)throw invalid_iterator();
                 const_iterator temp(*this);
-                if (nowElement->preElement == nullptr) {
-                    nowBlock = nowBlock->preBlock;
+                if (nowBlock != nullptr) {
+                    if (nowElement->preElement == nullptr) {
+                        nowBlock = nowBlock->preBlock;
+                        nowElement = nowBlock->elementTail;
+                    }
+                    else nowElement = nowElement->preElement;
+                }
+                else {
+                    nowBlock = ptr->blockTail;
                     nowElement = nowBlock->elementTail;
                 }
-                else nowElement = nowElement->preElement;
                 nowIndex--;
                 return temp;
             }
             
             const_iterator &operator--() {
-                if (nowIndex == 0) {
-                    invalid = true;
-                    return *this;
+                if (nowIndex == 0)throw invalid_iterator();
+                if (nowBlock != nullptr) {
+                    if (nowElement->preElement == nullptr) {
+                        nowBlock = nowBlock->preBlock;
+                        nowElement = nowBlock->elementTail;
+                    }
+                    else nowElement = nowElement->preElement;
                 }
-                if (nowElement->preElement == nullptr) {
-                    nowBlock = nowBlock->preBlock;
+                else {
+                    nowBlock = ptr->blockTail;
                     nowElement = nowBlock->elementTail;
                 }
-                else nowElement = nowElement->preElement;
                 nowIndex--;
                 return *this;
             }
             
-            T &operator*() const {
-                if (invalid)throw invalid_iterator();
+            const T &operator*() const {
+                if (invalid || nowIndex >= ptr->len || nowIndex < 0)throw invalid_iterator();
                 return *(nowElement->value);
             }
             
             T *operator->() const {
-                if (invalid)throw invalid_iterator();
+                if (invalid || nowIndex >= ptr->len || nowIndex < 0)throw invalid_iterator();
                 return nowElement->value;
             }
             
@@ -643,7 +647,9 @@ namespace sjtu {
             }
         };
         
-        deque() = default;
+        deque() {
+            initialize();
+        }
         
         deque(const deque &o) {
             Block *cur = o.blockHead;
@@ -654,23 +660,25 @@ namespace sjtu {
         }
         
         ~deque() {
-            Block *tempDelete = blockHead;
+            Block *tempDelete;
             while (blockHead != nullptr) {
-                blockHead = blockHead->nextBlock;
-                tempDelete->clearElement();
-                delete tempDelete;
                 tempDelete = blockHead;
+                blockHead = blockHead->nextBlock;
+                delete tempDelete;
             }
         }
         
         deque &operator=(const deque &o) {
             if (this == &o)return *this;
-            Block *tempDelete = blockHead;
+            Block *tempDelete;
             while (blockHead != nullptr) {
+                tempDelete = blockHead;
                 blockHead = blockHead->nextBlock;
                 delete tempDelete;
-                tempDelete = blockHead;
             }
+            blockTail = nullptr;
+            len = 0;
+            blockNum = 0;
             Block *cur = o.blockHead;
             while (cur != nullptr) {
                 pushBackBlock(cur);
@@ -737,10 +745,13 @@ namespace sjtu {
          * returns an iterator to the beginning.
          */
         iterator begin() {
+            if (blockNum == 0)initialize();
+            if (len == 0)return end();
             return iterator(this, blockHead, blockHead->elementHead, 0);
         }
         
         const_iterator cbegin() const {
+            if (len == 0)return cend();
             return const_iterator(this, blockHead, blockHead->elementHead, 0);
         }
         
@@ -748,6 +759,7 @@ namespace sjtu {
          * returns an iterator to the end.
          */
         iterator end() {
+            if (blockNum == 0)initialize();
             return iterator(this, nullptr, nullptr, len);
         }
         
@@ -773,17 +785,14 @@ namespace sjtu {
          * clears the contents
          */
         void clear() {
-            Block *tempDelete = blockHead;
+            Block *tempDelete;
             while (blockHead != nullptr) {
-                blockHead = blockHead->nextBlock;
-                tempDelete->clearElement();
-                delete tempDelete;
                 tempDelete = blockHead;
+                blockHead = blockHead->nextBlock;
+                delete tempDelete;
             }
-            blockHead = nullptr;
             blockTail = nullptr;
-            len = 0;
-            blockNum = 0;
+            initialize();
         }
         
         /**
@@ -795,13 +804,19 @@ namespace sjtu {
         iterator insert(iterator pos, const T &value) {
             if (pos.invalid)throw invalid_iterator();
             if (blockNum == 0)initialize();
-            if (pos.nowIndex < 0 || pos.nowIndex >= len)throw invalid_iterator();
+            if (pos.nowIndex < 0 || pos.nowIndex > len)throw invalid_iterator();
             if (pos.ptr != this)throw invalid_iterator();
-            int index;
-            Block *now = findBlock(pos.nowIndex, index);
-            Element *temp = new Element(value);
-            if (now->insertElement(this, index, temp))now = findBlock(pos.nowIndex, index);
-            return iterator(this, now, temp, pos.nowIndex);
+            if (pos.nowIndex == len) {
+                push_back(value);
+                return iterator(this, blockTail, blockTail->elementTail, len - 1);
+            }
+            else {
+                int index;
+                Block *now = findBlock(pos.nowIndex, index);
+                Element *temp = new Element(value);
+                if (now->insertElement(this, index, temp))now = findBlock(pos.nowIndex, index);
+                return iterator(this, pos.nowIndex);
+            }
         }
         
         /**
@@ -811,6 +826,7 @@ namespace sjtu {
          * throw if the container is empty, the iterator is invalid or it points to a wrong place.
          */
         iterator erase(iterator pos) {
+            if (blockNum == 0)initialize();
             if (len == 0)throw container_is_empty();
             if (pos.invalid)throw invalid_iterator();
             if (pos.nowIndex < 0 || pos.nowIndex >= len)throw invalid_iterator();
@@ -819,11 +835,10 @@ namespace sjtu {
             int index;
             Block *now = findBlock(pos.nowIndex, index);
             if (now->eraseElement(this, index))now = findBlock(pos.nowIndex, index);
-            Element *temp;
-            if (index != now->elementNum)temp = now->findElement(index);
-            else temp = now->nextBlock->elementHead;
+            Element *temp = now->findElement(index);
+//            if(temp== nullptr)throw invalid_iterator();
             if (flag)return iterator(this, nullptr, nullptr, len);
-            else return iterator(this, now, temp, pos.nowIndex);
+            else return iterator(this, pos.nowIndex);
         }
         
         /**
@@ -839,6 +854,7 @@ namespace sjtu {
          *     throw when the container is empty.
          */
         void pop_back() {
+            if (blockNum == 0)initialize();
             if (len == 0)throw container_is_empty();
             blockTail->eraseElement(this, -1);
         }
@@ -856,6 +872,7 @@ namespace sjtu {
          *     throw when the container is empty.
          */
         void pop_front() {
+            if (blockNum == 0)initialize();
             if (len == 0)throw container_is_empty();
             blockHead->eraseElement(this, 0);
         }

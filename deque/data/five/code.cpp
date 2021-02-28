@@ -54,6 +54,7 @@ bool equal(){
 }
 void test1(){
 	printf("test1: push & pop                    ");
+    cout.flush();
 	for(int i=1;i<=N;i++){
 		if(i % 10 <= 3) q.push_back(T(i)), stl.push_back(T(i));else
 		if(i % 10 <= 7) q.push_front(T(i)), stl.push_front(T(i));else
@@ -66,9 +67,11 @@ void test1(){
 		stl.pop_back();	
 	}
 	puts("Accept");
+    cout.flush();
 }
 void test2(){
 	printf("test2: at & [] & front & back        ");
+    cout.flush();
 	int flag = 0;
 	try{
 		int t = q.front().num();
@@ -97,9 +100,11 @@ void test2(){
 	}
 	if(q.front() != stl.front() || q.back() != stl.back()){puts("Wrong Answer");return;}
 	puts("Accept");
+    cout.flush();
 }
 void test3(){
 	printf("test3: itetator operation            ");
+    cout.flush();
 	int num = q.size();
 	for(int i =1 ; i <= 1000; i++)
 	{
@@ -156,10 +161,12 @@ void test3(){
 	it_stl_const -> change(t);
 	if(!equal()){puts("Wrong Answer");return;}
 	puts("Accept");
+    cout.flush();
 }
 
 void test4(){
 	printf("test4: const_itetator operation      ");
+    cout.flush();
 	const sjtu::deque<T> _q(q);
 	const std::deque<T> _stl(stl);
 	int num = _q.size();
@@ -187,10 +194,12 @@ void test4(){
 	if(*_it_q != *_it_stl) {puts("Wrong Answer");return;}
 	if (!(_q.cbegin() + 10 == _q.cbegin() +5 + 6 - 1)) {puts("Wrong Answer");return;} 
 	puts("Accept");
+    cout.flush();
 }
 
 void test5(){
 	printf("test5: erase & insert                ");
+    cout.flush();
 	for(int i=1;i<=sqrt(N) && q.size()>=10;i++)
 	{
 		int t = rand() % (q.size() - 3);
@@ -230,9 +239,11 @@ void test5(){
 	if(it_q != q.end() - 1){puts("Wrong Answer");return;}
 	if(!equal()) {puts("Wrong Answer");return;}
 	puts("Accept");
+    cout.flush();
 }
 void test6(){
 	printf("test6: clear & copy & assignment     ");
+    cout.flush();
 	sjtu::deque<T> p(q), r;
 	r = q;
 	q.clear();
@@ -260,9 +271,11 @@ void test6(){
 	q=q=q=q;
 	if(!equal()) {puts("Wrong Answer");return;}
 	puts("Accept");
+    cout.flush();
 }
 void test7(){
 	printf("test7: complexity                    ");
+    cout.flush();
 	int num = 500000;
 	static sjtu::deque<T> q;
 	for(int i = 0; i < num; i++) q.push_front(T(i));
@@ -310,15 +323,23 @@ void test7(){
 		}
 	}
 	puts("Accept");
+    cout.flush();
 }
 int main(){
 	srand(time(NULL));
 	puts("test start:");
 	test1();//push & pop
+    cout.flush();
 	test2();//at & [] & front & back
+    cout.flush();
 	test3();//iterator operation
+    cout.flush();
 	test4();//const_iterator operation
-	test5();//erase & insert 
+    cout.flush();
+	test5();//erase & insert
+    cout.flush();
 	test6();//clear & copy & assignment
+    cout.flush();
 	test7();//complexity
+    cout.flush();
 }

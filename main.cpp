@@ -50,6 +50,7 @@ void commandLinePriorityQueue() {
 }
 
 void commandLineDeque() {
+    srand(1);
     sjtu::deque<int> dq;
     string cmd;
     while (getline(cin, cmd)) {
@@ -88,6 +89,15 @@ void commandLineDeque() {
                 cout << "Erase No." << ++cnt << " Element successful." << endl;
             }
         }
+        else if (ty == "randompop") {
+            int cnt = 0;
+            while (!dq.empty()) {
+                int judge = rand() % 2;
+                if (judge)dq.pop_front();
+                else dq.pop_back();
+                cout << "Erase No." << ++cnt << " Element successful." << endl;
+            }
+        }
         else if (ty == "pr") {
             dq.print();
         }
@@ -113,18 +123,21 @@ void commandLineDeque() {
         else if (ty == "ins") {
             int pos, va;
             ss >> pos >> va;
-            auto iter = dq.begin();
-            iter += pos;
-            auto tp = dq.insert(iter, va);
+            auto tp = dq.insert(dq.begin() + pos, va);
+            cout << *tp << endl;
+        }
+        else if (ty == "insb") {
+            int pos, va;
+            ss >> pos >> va;
+            auto tp = dq.insert(dq.end() - pos, va);
             cout << *tp << endl;
         }
         else if (ty == "er") {
             int pos;
             ss >> pos;
-            auto iter = dq.begin();
-            iter += pos;
-            auto tp = dq.erase(iter);
-            cout << *tp << endl;
+            auto tp = dq.erase(dq.begin() + pos);
+            if (tp != dq.end())cout << *tp << endl;
+            else cout << "it::end()" << endl;
         }
         else if (ty == "sz") {
             cout << dq.size() << endl;
@@ -146,7 +159,7 @@ void commandLineDeque() {
 int main() {
     cout << "[System]Programme initializing..." << endl;
     cout << "[Info]Welcome to RainyMemory's STLite project!" << endl;
-    commandLinePriorityQueue();
-//    commandLineDeque();
+//    commandLinePriorityQueue();
+    commandLineDeque();
     return 0;
 }

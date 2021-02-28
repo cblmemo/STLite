@@ -315,10 +315,17 @@ int main(){
 	srand(time(NULL));
 	puts("test start:");
 	test1();//push & pop
+	cout.flush();
 	test2();//at & [] & front & back
+    cout.flush();
 	test3();//iterator operation
+    cout.flush();
 	test4();//const_iterator operation
-	test5();//erase & insert 
+    cout.flush();
+	test5();//erase & insert
+    cout.flush();
 	test6();//clear & copy & assignment
+    cout.flush();
 	test7();//complexity
+    cout.flush();
 }
