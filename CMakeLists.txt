@@ -1,6 +1,6 @@
-cmake_minimum_required(VERSION 3.17)
+cmake_minimum_required(VERSION 3.10)
 project(STLite)
 
 set(CMAKE_CXX_STANDARD 14)
 
-add_executable(STLite deque/data/six/code.cpp deque/deque.hpp deque/exceptions.hpp deque/utility.hpp)
+add_executable(STLite map/data/one/code.cpp map/map.hpp map/exceptions.hpp map/utility.hpp)

@@ -10,7 +10,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <algorithm>
-#include "map.hpp"
+#include "../../map.hpp"
 
 using namespace std;
 
