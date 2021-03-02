@@ -2,8 +2,11 @@
 #include <string>
 #include <sstream>
 #include <cstdlib>
-#include "priority_queue//priority_queue.hpp"
+#include <map>
+#include "priority_queue/priority_queue.hpp"
 #include "deque/deque.hpp"
+#include "map/map.hpp"
+//#include "map/stl_rbtree.h"
 
 using namespace std;
 
@@ -156,10 +159,87 @@ void commandLineDeque() {
     }
 }
 
+void commandLineMap() {
+    srand(1);
+    sjtu::map<int, int> mp;
+    string cmd;
+    while (getline(cin, cmd)) {
+        stringstream ss(cmd);
+        string ty;
+        ss >> ty;
+        if (ty == "fill") {
+            int va;
+            ss >> va;
+            for (int i = 0; i < va; i++) {
+                mp[i] = 1;
+            }
+            cout << "Fill successful." << endl;
+        }
+        else if (ty == "randomfill") {
+            int va;
+            ss >> va;
+            for (int i = 0; i < va; i++) {
+                int pos = rand() % va;
+                mp[pos] = pos;
+            }
+            cout << "Fill successful." << endl;
+        }
+        else if (ty == "ins") {
+            int va1, va2;
+            ss >> va1 >> va2;
+            cout << (mp[va1] = va2) << endl;
+        }
+        else if (ty == "vis") {
+            int key;
+            ss >> key;
+            cout << mp[key] << endl;
+        }
+        else if (ty == "er") {
+//            int pos;
+//            ss >> pos;
+//            auto tp = dq.erase(dq.begin() + pos);
+//            if (tp != dq.end())cout << *tp << endl;
+//            else cout << "it::end()" << endl;
+        }
+        else if (ty == "sz") {
+            cout << mp.size() << endl;
+        }
+        else if (ty == "pr") {
+            mp.print();
+        }
+        else if (ty == "cl") {
+            mp.clear();
+            cout << "Clear successful." << endl;
+        }
+        else if (ty == "check") {
+            if (mp.checkColoringProperties())cout << "[Correct]Your RedBlackTree has correct coloring properties." << endl;
+            else {
+                cout << "[Invalid]Your RedBlackTree has wrong coloring properties." << endl;
+                mp.print();
+            }
+        }
+        else if (ty == "ly") {
+            cout << mp.layer() << endl;
+        }
+        else if (ty == "blly") {
+            cout << mp.blackLayer() << endl;
+        }
+        else if (ty == "exit") {
+            break;
+        }
+        else cout << "Invalid" << endl;
+    }
+}
+
+void testMapInsert() {
+
+}
+
 int main() {
     cout << "[System]Programme initializing..." << endl;
     cout << "[Info]Welcome to RainyMemory's STLite project!" << endl;
 //    commandLinePriorityQueue();
-    commandLineDeque();
+//    commandLineDeque();
+    commandLineMap();
     return 0;
 }

@@ -10,6 +10,19 @@
 #include "utility.hpp"
 #include "exceptions.hpp"
 
+#define debug
+
+#ifdef debug
+
+#include <iostream>
+#include <queue>
+
+using std::queue;
+using std::cout;
+using std::endl;
+
+#endif
+
 namespace sjtu {
     
     template<class Key, class T, class Compare = std::less<Key>>
@@ -32,6 +45,8 @@ namespace sjtu {
         };
         
         class Node {
+            friend class map;
+        
         public:
             colorType color = RED;
             value_type *value = nullptr;
@@ -41,9 +56,9 @@ namespace sjtu {
             
             Node() = default;
             
-            explicit Node(const value_type &o, colorType c = RED) : value(new value_type(o)), color(c) {}
+            explicit Node(const value_type &o, colorType c) : value(new value_type(o)), color(c) {}
             
-            explicit Node(value_type *o, colorType c = RED) : value(o), color(c) {}
+            explicit Node(value_type *o, colorType c) : value(o), color(c) {}
             
             Node(const Node &o) : value(new value_type(*o.value)), color(o.color) {}
             
@@ -53,8 +68,21 @@ namespace sjtu {
                 delete value;
             }
             
+            bool isRed() const {
+                return color == RED;
+            }
+            
+            bool isBlack() const {
+                return color == BLACK;
+            }
+            
             bool isLeft() const {
                 if (parent->left == this)return true;
+                else return false;
+            }
+            
+            bool isRight() const {
+                if (parent->right == this)return true;
                 else return false;
             }
             
@@ -62,11 +90,23 @@ namespace sjtu {
                 return parent->parent == this && color == RED;
             }
             
+            bool isRoot() const {
+                return parent->parent == this && color == BLACK;
+            }
+            
             void rotateLeft() {
-                if (isLeft()) {
+                if (isRoot()) {
+                    parent->parent = right;
+                    right = right->left;
+                    if (right != nullptr)right->parent = this;
+                    parent->parent->parent = parent;
+                    parent->parent->left = this;
+                    parent = parent->parent;
+                }
+                else if (isLeft()) {
                     parent->left = right;
                     right = right->left;
-                    right->parent = this;
+                    if (right != nullptr)right->parent = this;
                     parent->left->parent = parent;
                     parent->left->left = this;
                     parent = parent->left;
@@ -74,7 +114,7 @@ namespace sjtu {
                 else {
                     parent->right = right;
                     right = right->left;
-                    right->parent = this;
+                    if (right != nullptr)right->parent = this;
                     parent->right->parent = parent;
                     parent->right->left = this;
                     parent = parent->right;
@@ -82,10 +122,18 @@ namespace sjtu {
             }
             
             void rotateRight() {
-                if (isLeft()) {
+                if (isRoot()) {
+                    parent->parent = left;
+                    left = left->right;
+                    if (left != nullptr)left->parent = this;
+                    parent->parent->parent = parent;
+                    parent->parent->right = this;
+                    parent = parent->parent;
+                }
+                else if (isLeft()) {
                     parent->left = left;
                     left = left->right;
-                    left->parent = this;
+                    if (left != nullptr)left->parent = this;
                     parent->left->parent = parent;
                     parent->left->right = this;
                     parent = parent->left;
@@ -93,7 +141,7 @@ namespace sjtu {
                 else {
                     parent->right = left;
                     left = left->right;
-                    left->parent = this;
+                    if (left != nullptr)left->parent = this;
                     parent->right->parent = parent;
                     parent->right->right = this;
                     parent = parent->right;
@@ -101,19 +149,19 @@ namespace sjtu {
             }
             
             Node *findMin() const {
-                Node *node = this;
+                Node *node = const_cast<Node *>(this);
                 while (node->left != nullptr)node = node->left;
                 return node;
             }
             
             Node *findMax() const {
-                Node *node = this;
+                Node *node = const_cast<Node *>(this);
                 while (node->right != nullptr)node = node->right;
                 return node;
             }
             
             Node *findPrecursor() const {
-                Node *node = this;
+                Node *node = const_cast<Node *>(this);
                 if (node->isHeader())node = node->right;
                 else if (node->left != nullptr)node = node->left->findMax();
                 else {
@@ -123,8 +171,8 @@ namespace sjtu {
                 return node;
             }
             
-            Node *findSucceed() const {
-                Node *node = this;
+            Node *findSuccessor() const {
+                Node *node = const_cast<Node *>(this);
                 if (node->right != nullptr)node = node->right->findMin();
                 else {
                     while (node->parent->right == node)node = node->parent;
@@ -132,17 +180,51 @@ namespace sjtu {
                 }
                 return node;
             }
+            
+            void rebalanceRedParentAndBlackUncle() {
+                if (isLeft() && parent->isLeft()) {
+                    parent->parent->rotateRight();
+                    parent->color = BLACK;
+                    parent->right->color = RED;
+                }
+                else if (isRight() && parent->isRight()) {
+                    parent->parent->rotateLeft();
+                    parent->color = BLACK;
+                    parent->left->color = RED;
+                }
+                else if (isLeft() && parent->isRight()) {
+                    parent->rotateRight();
+                    color = BLACK;
+                    parent->color = RED;
+                    parent->rotateLeft();
+                }
+                else {
+                    //isRight() && parent->isLeft()
+                    parent->rotateLeft();
+                    color = BLACK;
+                    parent->color = RED;
+                    parent->rotateRight();
+                }
+            }
+
+#ifdef debug
+            
+            void print() const {
+                cout << (isRed() ? "R " : "B ") << value->first << "  ";
+            }
+
+#endif
         };
         
         Node *header = nullptr;//header's parent is root, left is leftmost, right is rightmost
         int nodeNumber = 0;
         Compare compare;
         
-        bool less(const Key &a, const Key &b) const {
+        inline bool less(const Key &a, const Key &b) const {
             return compare(a, b);
         }
         
-        bool equal(const Key &a, const Key &b) const {
+        inline bool equal(const Key &a, const Key &b) const {
             return !(less(a, b) || less(b, a));
         }
         
@@ -171,12 +253,55 @@ namespace sjtu {
             return nullptr;
         }
         
-        Node *insert(Node *o) {
+        Node *findInsertPos(const value_type &value) {
+            Node *pa = header;
+            Node *now = header->parent;
+            while (now != nullptr) {
+                //adjust two red child case
+                if (now->left != nullptr && now->right != nullptr && now->left->isRed() && now->right->isRed()) {
+                    now->left->color = now->right->color = BLACK;
+                    if (!now->isRoot()) {
+                        now->color = RED;
+                        if (now->parent->isRed())now->rebalanceRedParentAndBlackUncle();
+                    }
+                }
+                pa = now;
+                now = less(value.first, now->value->first) ? now->left : now->right;
+            }
+            return pa;
+        }
         
+        iterator RedBlackTreeInsert(Node *insertPos, const value_type &value) {
+            nodeNumber++;
+            if (insertPos == header) {//empty tree
+                header->parent = new Node(value, BLACK);
+                header->parent->parent = header;
+                header->left = header->right = header->parent;
+                return iterator(header->parent);
+            }
+            Node *insertNode = new Node(value, RED);
+            if (less(value.first, insertPos->value->first)) {
+                if (insertPos == header->left)header->left = insertNode;
+                insertPos->left = insertNode;
+            }
+            else {
+                if (insertPos == header->right)header->right = insertNode;
+                insertPos->right = insertNode;
+            }
+            insertNode->parent = insertPos;
+            insertRebalance(insertNode);
+            return iterator(insertNode);
+        }
+        
+        void insertRebalance(Node *now) {
+            if (now->parent->color == BLACK)return;
+            now->rebalanceRedParentAndBlackUncle();
         }
     
     public:
         class iterator {
+            friend class map;
+        
         private:
             Node *node = nullptr;
         
@@ -190,19 +315,19 @@ namespace sjtu {
             iterator operator++(int) {
                 if (node->isHeader())throw invalid_iterator();
                 iterator temp(*this);
-                node = node->findSucceed();
+                node = node->findSuccessor();
                 return temp;
             }
             
             iterator &operator++() {
                 if (node->isHeader())throw invalid_iterator();
-                node = node->findSucceed();
+                node = node->findSuccessor();
                 return *this;
             }
             
             iterator operator--(int) {
                 iterator temp(*this);
-                node = node->findPrecursor();
+                node = node->findPrecursor();//begin()'s precursor is header
                 if (node->isHeader())throw invalid_iterator();
                 return temp;
             }
@@ -226,20 +351,22 @@ namespace sjtu {
             }
             
             bool operator!=(const iterator &o) const {
-                return !(node == o.node);
+                return node != o.node;
             }
             
             bool operator!=(const const_iterator &o) const {
-                return !(node == o.node);
+                return node != o.node;
             }
             
             value_type *operator->() const noexcept {
-                if(node->isHeader())throw invalid_iterator();
+                if (node->isHeader())throw invalid_iterator();
                 return node->value;
             }
         };
         
         class const_iterator {
+            friend class map;
+        
         private:
             const Node *node = nullptr;
         
@@ -249,19 +376,19 @@ namespace sjtu {
             const_iterator(const const_iterator &o) : node(o.node) {}
             
             const_iterator(const iterator &o) : node(o.node) {}
-    
+            
             explicit const_iterator(Node *o) : node(o) {}
             
             const_iterator operator++(int) {
                 if (node->isHeader())throw invalid_iterator();
                 const_iterator temp(*this);
-                node = node->findSucceed();
+                node = node->findSuccessor();
                 return temp;
             }
             
             const_iterator &operator++() {
                 if (node->isHeader())throw invalid_iterator();
-                node = node->findSucceed();
+                node = node->findSuccessor();
                 return *this;
             }
             
@@ -291,15 +418,15 @@ namespace sjtu {
             }
             
             bool operator!=(const iterator &o) const {
-                return !(node == o.node);
+                return node != o.node;
             }
             
             bool operator!=(const const_iterator &o) const {
-                return !(node == o.node);
+                return node != o.node;
             }
             
             value_type *operator->() const noexcept {
-                if(node->isHeader())throw invalid_iterator();
+                if (node->isHeader())throw invalid_iterator();
                 return node->value;
             }
         };
@@ -352,10 +479,11 @@ namespace sjtu {
          *   performing an insertion if such key does not already exist.
          */
         T &operator[](const Key &key) {
-            Node *temp = findNode(key);
-            if (temp != nullptr)return temp->value->second;
+            Node *pos = findNode(key);
+            if (pos != nullptr)return pos->value->second;
             else {
-                //todo insert
+                pair<iterator, bool> temp = insert(value_type(key, T()));
+                return temp.first.node->value->second;
             }
         }
         
@@ -395,15 +523,9 @@ namespace sjtu {
             nodeNumber = 0;
         }
         
-        /**
-         * insert an element.
-         * return a pair, the first of the pair is
-         *   the iterator to the new element (or the element that prevented the insertion),
-         *   the second one is true if insert successfully, or false.
-         */
         pair<iterator, bool> insert(const value_type &value) {
             if (findNode(value.first) != nullptr)return pair<iterator, bool>(iterator(nullptr), false);
-            
+            return pair<iterator, bool>(RedBlackTreeInsert(findInsertPos(value), value), true);
         }
         
         /**
@@ -435,6 +557,73 @@ namespace sjtu {
             if (temp == nullptr)return cend();
             else return const_iterator(temp);
         }
+
+#ifdef debug
+        
+        int blackLayer() const {
+            Node *now = const_cast<Node *>(header->parent);
+            int cnt = 0;
+            while (now != nullptr) {
+                if (now->color == BLACK)cnt++;
+                now = now->left;
+            }
+            return cnt;
+        }
+        
+        bool checkColoringProperties() const {
+            return recursionCheck(header->parent, 0, blackLayer());
+        }
+        
+        bool recursionCheck(Node *now, int nowBlackLayer, int totalBlackLayer) const {
+            if (now == nullptr) {
+                if (nowBlackLayer == totalBlackLayer)return true;
+                else return false;
+            }
+            if (now->isRed()) {
+                if (now->parent->isRed())return false;
+            }
+            else nowBlackLayer++;
+            return recursionCheck(now->left, nowBlackLayer, totalBlackLayer) && recursionCheck(now->right, nowBlackLayer, totalBlackLayer);
+        }
+        
+        int layer() const {
+            return recursionLayer(1, const_cast<Node *>(header->parent));
+        }
+        
+        int recursionLayer(int nowLayer, Node *nowNode) const {
+            if (nowNode == nullptr)return nowLayer;
+            int a = recursionLayer(nowLayer + 1, nowNode->left);
+            int b = recursionLayer(nowLayer + 1, nowNode->right);
+            return a > b ? a : b;
+        }
+        
+        void print() const {
+            int sz = 1, la = layer();
+            for (int i = 1; i < la; i++)sz *= 2;
+            sz -= 3;
+            queue<Node *> q;
+            q.push(header->parent);
+            int cnt = 0;
+            while (!q.empty()) {
+                if (q.front() != nullptr) {
+                    q.push(q.front()->left);
+                    q.push(q.front()->right);
+                    q.front()->print();
+                }
+                else {
+                    q.push(nullptr);
+                    q.push(nullptr);
+                    cout << "\\0   ";
+                }
+                int t = cnt++;
+                if (t == 0 || t == 2 || t == 6 || t == 14 || t == 30 || t == 62 || t == 126 || t == 254 || t == 510 || t == 1022 || t == 2046 || t == 4094 || t == 8190)cout << endl;
+                if (t > sz)break;
+                q.pop();
+            }
+            cout << endl;
+        }
+
+#endif
     };
     
 }
