@@ -24,7 +24,6 @@ using std::endl;
 #endif
 
 namespace sjtu {
-    
     template<class Key, class T, class Compare = std::less<Key>>
     class map {
     public:
@@ -42,6 +41,10 @@ namespace sjtu {
     private:
         enum colorType {
             RED, BLACK
+        };
+        
+        enum positionType {
+            NONE, OUTBOARD, INBOARD, BOTH//same, different
         };
         
         class Node {
@@ -68,6 +71,16 @@ namespace sjtu {
                 delete value;
             }
             
+            Node *&selfFromParent() {
+                if (isRoot())return parent->parent;
+                else if (isLeft())return parent->left;
+                else return parent->right;
+            }
+            
+            Key getKey() const {
+                return value->first;
+            }
+            
             bool isRed() const {
                 return color == RED;
             }
@@ -87,11 +100,44 @@ namespace sjtu {
             }
             
             bool isHeader() const {
+                if (parent == nullptr)return true;//empty tree
                 return parent->parent == this && color == RED;
             }
             
             bool isRoot() const {
                 return parent->parent == this && color == BLACK;
+            }
+            
+            int childNumber() const {
+                int cnt = 0;
+                if (left != nullptr)cnt++;
+                if (right != nullptr)cnt++;
+                return cnt;
+            }
+            
+            int redChildNumber() const {
+                int cnt = 0;
+                if (left != nullptr && left->color == RED)cnt++;
+                if (right != nullptr && right->color == RED)cnt++;
+                return cnt;
+            }
+            
+            positionType redChildPosition() {
+                switch (redChildNumber()) {
+                    case 0:
+                        return NONE;
+                    case 1:
+                        if (isLeft()) {
+                            if (left != nullptr && left->color == RED)return OUTBOARD;
+                            else return INBOARD;
+                        }
+                        else {
+                            if (right != nullptr && right->color == RED)return OUTBOARD;
+                            else return INBOARD;
+                        }
+                    default:
+                        return BOTH;
+                }
             }
             
             void rotateLeft() {
@@ -148,6 +194,46 @@ namespace sjtu {
                 }
             }
             
+            void swapColor(Node *other) {
+                colorType t = other == nullptr ? BLACK : other->color;
+                if (other != nullptr)other->color = color;
+                color = t;
+            }
+            
+            void swapPos(Node *other) {
+                if (parent == other) {
+                    swapColor(other);
+                    Node *l = left, *r = right, *sib = getSibling();
+                    other->selfFromParent() = this, parent = other->parent, other->parent = this;
+                    if (l != nullptr)l->parent = other;
+                    if (r != nullptr)r->parent = other;
+                    if (sib != nullptr)sib->parent = this;
+                    other->left = l, other->right = r;
+                    if (isLeft())right = sib, left = other;
+                    else left = sib, right = other;
+                }
+                else if (other->parent == this) {
+                    other->swapPos(this);
+                }
+                else {
+                    swapColor(other);
+                    selfFromParent() = other;
+                    other->selfFromParent() = this;
+                    if (left != nullptr)left->parent = other;
+                    if (right != nullptr)right->parent = other;
+                    Node *l = left, *r = right, *p = parent;
+                    left = other->left, right = other->right, parent = other->parent;
+                    if (other->left != nullptr)other->left->parent = this;
+                    if (other->right != nullptr)other->right->parent = this;
+                    other->left = l, other->right = r, other->parent = p;
+                }
+            }
+            
+            Node *&getSibling() const {
+                if (isLeft())return parent->right;
+                else return parent->left;
+            }
+            
             Node *findMin() const {
                 Node *node = const_cast<Node *>(this);
                 while (node->left != nullptr)node = node->left;
@@ -184,39 +270,43 @@ namespace sjtu {
             void rebalanceRedParentAndBlackUncle() {
                 if (isLeft() && parent->isLeft()) {
                     parent->parent->rotateRight();
-                    parent->color = BLACK;
-                    parent->right->color = RED;
+//                    parent->color = BLACK;
+//                    parent->right->color = RED;
+                    parent->swapColor(parent->right);
                 }
                 else if (isRight() && parent->isRight()) {
                     parent->parent->rotateLeft();
-                    parent->color = BLACK;
-                    parent->left->color = RED;
+//                    parent->color = BLACK;
+//                    parent->left->color = RED;
+                    parent->swapColor(parent->left);
                 }
                 else if (isLeft() && parent->isRight()) {
                     parent->rotateRight();
-                    color = BLACK;
-                    parent->color = RED;
                     parent->rotateLeft();
+//                    color = BLACK;
+//                    left->color = RED;
+                    swapColor(left);
                 }
                 else {
                     //isRight() && parent->isLeft()
                     parent->rotateLeft();
-                    color = BLACK;
-                    parent->color = RED;
                     parent->rotateRight();
+//                    color = BLACK;
+//                    right->color = RED;
+                    swapColor(right);
                 }
             }
 
 #ifdef debug
             
             void print() const {
-                cout << (isRed() ? "R " : "B ") << value->first << "  ";
+                cout << (isRed() ? "R " : "B ") << getKey() << "  ";
             }
 
 #endif
         };
         
-        Node *header = nullptr;//header's parent is root, left is leftmost, right is rightmost
+        Node *header = nullptr; //header's parent is root, left is leftmost, right is rightmost
         int nodeNumber = 0;
         Compare compare;
         
@@ -247,8 +337,8 @@ namespace sjtu {
         Node *findNode(const Key &o) const {
             Node *temp = header->parent;
             while (temp != nullptr) {
-                if (equal(o, temp->value->first))return temp;
-                temp = less(o, temp->value->first) ? temp->left : temp->right;
+                if (equal(o, temp->getKey()))return temp;
+                temp = less(o, temp->getKey()) ? temp->left : temp->right;
             }
             return nullptr;
         }
@@ -266,21 +356,21 @@ namespace sjtu {
                     }
                 }
                 pa = now;
-                now = less(value.first, now->value->first) ? now->left : now->right;
+                now = less(value.first, now->getKey()) ? now->left : now->right;
             }
             return pa;
         }
         
         iterator RedBlackTreeInsert(Node *insertPos, const value_type &value) {
             nodeNumber++;
-            if (insertPos == header) {//empty tree
+            if (insertPos == header) { //empty tree
                 header->parent = new Node(value, BLACK);
                 header->parent->parent = header;
                 header->left = header->right = header->parent;
                 return iterator(header->parent);
             }
             Node *insertNode = new Node(value, RED);
-            if (less(value.first, insertPos->value->first)) {
+            if (less(value.first, insertPos->getKey())) {
                 if (insertPos == header->left)header->left = insertNode;
                 insertPos->left = insertNode;
             }
@@ -289,13 +379,72 @@ namespace sjtu {
                 insertPos->right = insertNode;
             }
             insertNode->parent = insertPos;
-            insertRebalance(insertNode);
+            if (insertNode->parent->color == RED)insertNode->rebalanceRedParentAndBlackUncle();
             return iterator(insertNode);
         }
         
-        void insertRebalance(Node *now) {
-            if (now->parent->color == BLACK)return;
-            now->rebalanceRedParentAndBlackUncle();
+        void rebalanceBlackSiblingWithNoRedChild(Node *now) {
+            if (now->isRoot())return;
+            if (now->parent->isRed()) {
+                now->parent->swapColor(now->getSibling());
+                return;
+            }
+            else if (now->getSibling() != nullptr && now->getSibling()->isRed()) {
+                now->parent->swapColor(now->getSibling());
+                if (now->isLeft())now->parent->rotateLeft();
+                else now->parent->rotateRight();
+                now->parent->swapColor(now->getSibling());
+                return;
+            }
+            else {
+                if (now->getSibling() != nullptr)now->getSibling()->color = RED;
+                rebalanceBlackSiblingWithNoRedChild(now->parent);
+            }
+        }
+        
+        void RedBlackTreeErase(Node *now) {
+            if (now->childNumber() == 2)now->swapPos(now->findSuccessor());
+            int cn = now->childNumber();
+            if (cn == 1) {
+                if (now->left != nullptr) {
+                    now->left->parent = now->parent;
+                    now->left->color = BLACK;
+                    now->selfFromParent() = now->left;
+                }
+                else {
+                    now->right->parent = now->parent;
+                    now->right->color = BLACK;
+                    now->selfFromParent() = now->right;
+                }
+                delete now;
+                return;
+            }
+            if (now->color == RED) {
+                now->selfFromParent() = nullptr;
+                delete now;
+                return;
+            }
+            if (now->getSibling() != nullptr && now->getSibling()->isRed()) {
+                now->parent->swapColor(now->getSibling());
+                if (now->isLeft())now->parent->rotateLeft();
+                else now->parent->rotateRight();
+            }
+            positionType pt;
+            if (now->getSibling() == nullptr || (pt = now->getSibling()->redChildPosition()) == NONE) {
+                rebalanceBlackSiblingWithNoRedChild(now);
+            }
+            else if (pt == OUTBOARD) {
+                now->getSibling()->color = now->parent->color, now->parent->color = BLACK;
+                if (now->isLeft())now->parent->rotateLeft();
+                else now->parent->rotateRight();
+            }
+            else { //INBOARD & BOTH
+                if (now->isLeft())now->getSibling()->rotateRight(), now->parent->rotateLeft();
+                else now->getSibling()->rotateLeft(), now->parent->rotateRight();
+                now->parent->parent->color = now->parent->color, now->parent->color = BLACK;
+            }
+            now->selfFromParent() = nullptr;
+            delete now;
         }
     
     public:
@@ -304,6 +453,14 @@ namespace sjtu {
         
         private:
             Node *node = nullptr;
+            
+            Key getKey() const {
+                return node->getKey();
+            }
+            
+            bool isInvalid() const {
+                return node == nullptr;
+            }
         
         public:
             iterator() = default;
@@ -313,14 +470,20 @@ namespace sjtu {
             explicit iterator(Node *o) : node(o) {}
             
             iterator operator++(int) {
-                if (node->isHeader())throw invalid_iterator();
+                if (node->isHeader()) {
+                    node = nullptr;
+                    throw invalid_iterator();
+                }
                 iterator temp(*this);
                 node = node->findSuccessor();
                 return temp;
             }
             
             iterator &operator++() {
-                if (node->isHeader())throw invalid_iterator();
+                if (node->isHeader()) {
+                    node = nullptr;
+                    throw invalid_iterator();
+                }
                 node = node->findSuccessor();
                 return *this;
             }
@@ -328,13 +491,19 @@ namespace sjtu {
             iterator operator--(int) {
                 iterator temp(*this);
                 node = node->findPrecursor();//begin()'s precursor is header
-                if (node->isHeader())throw invalid_iterator();
+                if (node->isHeader()) {
+                    node = nullptr;
+                    throw invalid_iterator();
+                }
                 return temp;
             }
             
             iterator &operator--() {
                 node = node->findPrecursor();
-                if (node->isHeader())throw invalid_iterator();
+                if (node->isHeader()) {
+                    node = nullptr;
+                    throw invalid_iterator();
+                }
                 return *this;
             }
             
@@ -380,14 +549,20 @@ namespace sjtu {
             explicit const_iterator(Node *o) : node(o) {}
             
             const_iterator operator++(int) {
-                if (node->isHeader())throw invalid_iterator();
+                if (node->isHeader()) {
+                    node = nullptr;
+                    throw invalid_iterator();
+                }
                 const_iterator temp(*this);
                 node = node->findSuccessor();
                 return temp;
             }
             
             const_iterator &operator++() {
-                if (node->isHeader())throw invalid_iterator();
+                if (node->isHeader()) {
+                    node = nullptr;
+                    throw invalid_iterator();
+                }
                 node = node->findSuccessor();
                 return *this;
             }
@@ -395,13 +570,19 @@ namespace sjtu {
             const_iterator operator--(int) {
                 const_iterator temp(*this);
                 node = node->findPrecursor();
-                if (node->isHeader())throw invalid_iterator();
+                if (node->isHeader()) {
+                    node = nullptr;
+                    throw invalid_iterator();
+                }
                 return temp;
             }
             
             const_iterator &operator--() {
                 node = node->findPrecursor();
-                if (node->isHeader())throw invalid_iterator();
+                if (node->isHeader()) {
+                    node = nullptr;
+                    throw invalid_iterator();
+                }
                 return *this;
             }
             
@@ -433,16 +614,16 @@ namespace sjtu {
         
         map() {
             header = new Node;
-            header->right = header;
-            header->left = header;
             header->parent = nullptr;
+            header->left = header;
+            header->right = header;
         }
         
         map(const map &o) : nodeNumber(o.nodeNumber) {
             header = new Node;
             header->parent = recursionConstruct(header, o.header->parent);
-            header->left = findNode(o.header->left->value->first);
-            header->right = findNode(o.header->right->value->first);
+            header->left = findNode(o.header->left->getKey());
+            header->right = findNode(o.header->right->getKey());
         }
         
         map &operator=(const map &o) {
@@ -450,8 +631,8 @@ namespace sjtu {
             clear();
             nodeNumber = o.nodeNumber;
             header->parent = recursionConstruct(header, o.header->parent);
-            header->left = findNode(o.header->left->value->first);
-            header->right = findNode(o.header->right->value->first);
+            header->left = findNode(o.header->left->getKey());
+            header->right = findNode(o.header->right->getKey());
             return *this;
         }
         
@@ -472,18 +653,13 @@ namespace sjtu {
             return temp->value->second;
         }
         
-        /**
-         * TODO
-         * access specified element
-         * Returns a reference to the value that is mapped to a key equivalent to key,
-         *   performing an insertion if such key does not already exist.
-         */
         T &operator[](const Key &key) {
             Node *pos = findNode(key);
             if (pos != nullptr)return pos->value->second;
             else {
-                pair<iterator, bool> temp = insert(value_type(key, T()));
-                return temp.first.node->value->second;
+                value_type value(key, T());
+                iterator temp = RedBlackTreeInsert(findInsertPos(value), value);
+                return temp.node->value->second;
             }
         }
         
@@ -533,19 +709,26 @@ namespace sjtu {
          *
          * throw if pos pointed to a bad element (pos == this->end() || pos points an element out of this)
          */
-        void erase(iterator pos) {}
+        void erase(iterator pos) {
+            if (pos == end() || pos.isInvalid() || find(pos.node->getKey()) != pos)throw runtime_error();
+            nodeNumber--;
+            if (nodeNumber == 0) {
+                delete header->parent;
+                header->parent = nullptr;
+                header->left = header;
+                header->right = header;
+                return;
+            }
+            if (pos.node == header->left)header->left = header->left->findSuccessor();
+            if (pos.node == header->right)header->right = header->right->findPrecursor();
+            RedBlackTreeErase(pos.node);
+        }
         
         size_t count(const Key &key) const {
             if (findNode(key) == nullptr)return 0;
             else return 1;
         }
         
-        /**
-         * Finds an element with key equivalent to key.
-         * key value of the element to search for.
-         * Iterator to an element with key equivalent to key.
-         *   If no such element is found, past-the-end (see end()) iterator is returned.
-         */
         iterator find(const Key &key) {
             Node *temp = findNode(key);
             if (temp == nullptr)return end();
@@ -598,7 +781,7 @@ namespace sjtu {
         }
         
         void print() const {
-            int sz = 1, la = layer();
+            int sz = 2, la = layer();
             for (int i = 1; i < la; i++)sz *= 2;
             sz -= 3;
             queue<Node *> q;
@@ -615,8 +798,8 @@ namespace sjtu {
                     q.push(nullptr);
                     cout << "\\0   ";
                 }
-                int t = cnt++;
-                if (t == 0 || t == 2 || t == 6 || t == 14 || t == 30 || t == 62 || t == 126 || t == 254 || t == 510 || t == 1022 || t == 2046 || t == 4094 || t == 8190)cout << endl;
+                int t = (cnt++) + 2;
+                if (t == (t & (-t)))cout << endl;
                 if (t > sz)break;
                 q.pop();
             }

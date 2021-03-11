@@ -228,7 +228,6 @@ namespace sjtu {
         vector(const vector &other) : length(other.length), tail(other.tail) {
             store = new T *[length];
             for (int i = 0; i < tail; i++)store[i] = new T(*(other.store[i]));
-            //todo memcpy? copy constructor?
         }
         
         ~vector() {
@@ -244,7 +243,6 @@ namespace sjtu {
             tail = other.tail;
             store = new T *[length];
             for (int i = 0; i < tail; i++)store[i] = new T(*(other.store[i]));
-            //todo memcpy? copy constructor?
             return *this;
         }
         
