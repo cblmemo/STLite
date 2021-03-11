@@ -6,7 +6,6 @@
 #include "map/map.hpp"
 #include "priority_queue/priority_queue.hpp"
 #include "deque/deque.hpp"
-//#include "map/stl_rbtree.h"
 
 #define TEST_SIZE 10000
 
