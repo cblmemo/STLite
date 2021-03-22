@@ -5,8 +5,8 @@
 #include <algorithm>
 #include <map>
 #include <ctime>
-#include "exceptions.hpp"
-#include "map.hpp"
+#include "../../exceptions.hpp"
+#include "../../map.hpp"
 
 const int MAXN = 5001;
 
