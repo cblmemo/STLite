@@ -7,9 +7,7 @@
 #include "utility.hpp"
 #include "exceptions.hpp"
 
-//This map has passed test point 1 2 3 4 5 6 7
-
-#define debug
+//#define debug
 
 #ifdef debug
 
@@ -26,11 +24,6 @@ namespace sjtu {
     template<class Key, class T, class Compare = std::less<Key>>
     class map {
     public:
-        /**
-         * the internal type of data.
-         * it should have a default constructor, a copy constructor.
-         * You can use sjtu::map as value_type by typedef.
-         */
         typedef pair<const Key, T> value_type;
         
         class iterator;
@@ -86,10 +79,6 @@ namespace sjtu {
             
             bool isRed() const {
                 return color == RED;
-            }
-            
-            bool isBlack() const {
-                return color == BLACK;
             }
             
             bool isLeft() const {
@@ -272,24 +261,27 @@ namespace sjtu {
             }
             
             void rebalanceRedParentAndBlackUncle() {
-                if (isLeft() && parent->isLeft()) {
-                    parent->parent->rotateRight();
-                    parent->swapColor(parent->right);
+                if (isLeft()) {
+                    if (parent->isLeft()) {
+                        parent->parent->rotateRight();
+                        parent->swapColor(parent->right);
+                    }
+                    else { //parent->isRight()
+                        parent->rotateRight();
+                        parent->rotateLeft();
+                        swapColor(left);
+                    }
                 }
-                else if (isRight() && parent->isRight()) {
-                    parent->parent->rotateLeft();
-                    parent->swapColor(parent->left);
-                }
-                else if (isLeft() && parent->isRight()) {
-                    parent->rotateRight();
-                    parent->rotateLeft();
-                    swapColor(left);
-                }
-                else {
-                    //isRight() && parent->isLeft()
-                    parent->rotateLeft();
-                    parent->rotateRight();
-                    swapColor(right);
+                else { //isRight()
+                    if (parent->isRight()) {
+                        parent->parent->rotateLeft();
+                        parent->swapColor(parent->left);
+                    }
+                    else { //parent->isLeft()
+                        parent->rotateLeft();
+                        parent->rotateRight();
+                        swapColor(right);
+                    }
                 }
             }
 
@@ -401,7 +393,7 @@ namespace sjtu {
                 else now->parent->rotateRight();
                 now->parent->getSibling()->setColor(BLACK);
             }
-            else { //INBOARD & BOTH
+            else { //INBOARD && BOTH
                 if (now->isLeft())now->getSibling()->rotateRight(), now->parent->rotateLeft();
                 else now->getSibling()->rotateLeft(), now->parent->rotateRight();
                 now->parent->parent->setColor(now->parent->color), now->parent->setColor(BLACK);
@@ -428,12 +420,7 @@ namespace sjtu {
                 return;
             }
             //now->childNumber() == 0
-            if (now->isRed()) {
-                now->selfFromParent() = nullptr;
-                delete now;
-                return;
-            }
-            rebalanceErase(now);
+            if (!now->isRed())rebalanceErase(now);
             now->selfFromParent() = nullptr;
             delete now;
         }
@@ -484,7 +471,7 @@ namespace sjtu {
             iterator operator--(int) {
                 if (isInvalid())throw invalid_iterator();
                 iterator temp(*this);
-                node = node->findPrecursor();//begin()'s precursor is header
+                node = node->findPrecursor(); //begin()'s precursor is header
                 if (node->isHeader()) {
                     node = nullptr;
                     throw invalid_iterator();
