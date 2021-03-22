@@ -165,92 +165,105 @@ void commandLineDeque() {
     }
 }
 
+bool runCommandLineMap(sjtu::map<int, int> &mp, const string &cmd) {
+    stringstream ss(cmd);
+    string ty;
+    ss >> ty;
+    if (ty == "fill") {
+        int va;
+        ss >> va;
+        for (int i = 0; i < va; i++) {
+            mp[i] = i;
+        }
+        cout << "Fill successful." << endl;
+    }
+    else if (ty == "randomfill") {
+        int va;
+        ss >> va;
+        for (int i = 0; i < va; i++) {
+            int pos = rand() % va;
+            mp[pos] = pos;
+        }
+        cout << "Fill successful." << endl;
+    }
+    else if (ty == "ins") {
+        int va1, va2;
+        ss >> va1 >> va2;
+        cout << (mp[va1] = va2) << endl;
+    }
+    else if (ty == "vis") {
+        int key;
+        ss >> key;
+        cout << mp[key] << endl;
+    }
+    else if (ty == "er") {
+        int key;
+        ss >> key;
+        auto it = mp.find(key);
+        mp.erase(it);
+    }
+    else if (ty == "erck") {
+        int key;
+        ss >> key;
+        auto it = mp.find(key);
+        mp.erase(it);
+        if (mp.checkColoringProperties())cout << "[Correct]Your RedBlackTree has correct coloring properties." << endl;
+        else {
+            cout << "[Invalid]Your RedBlackTree has wrong coloring properties." << endl;
+            mp.print();
+        }
+    }
+    else if (ty == "it") {
+        auto it = mp.begin();
+        int va;
+        ss >> va;
+        while (va--)it++;
+        cout << "key: " << it->first << " value: " << it->second << endl;
+    }
+    else if (ty == "sz") {
+        cout << mp.size() << endl;
+    }
+    else if (ty == "pr") {
+        mp.print();
+    }
+    else if (ty == "cl") {
+        mp.clear();
+        cout << "Clear successful." << endl;
+    }
+    else if (ty == "check") {
+        if (mp.checkColoringProperties())cout << "[Correct]Your RedBlackTree has correct coloring properties." << endl;
+        else {
+            cout << "[Invalid]Your RedBlackTree has wrong coloring properties." << endl;
+            mp.print();
+        }
+    }
+    else if (ty == "ly") {
+        cout << mp.layer() << endl;
+    }
+    else if (ty == "blly") {
+        cout << mp.blackLayer() << endl;
+    }
+    else if (ty == "exit") {
+        return true;
+    }
+    else cout << "Invalid" << endl;
+    return false;
+}
+
 void commandLineMap() {
     srand(1);
     sjtu::map<int, int> mp;
     string cmd;
+    cout << "[Info]Do you want default initialize? [Y/n]" << endl;
+    cin >> cmd;
+    getchar();
+    if (cmd == "Y" || cmd == "y") {
+        runCommandLineMap(mp, "randomfill 20");
+        runCommandLineMap(mp, "pr");
+    }
     while (getline(cin, cmd)) {
-        stringstream ss(cmd);
-        string ty;
-        ss >> ty;
-        if (ty == "fill") {
-            int va;
-            ss >> va;
-            for (int i = 0; i < va; i++) {
-                mp[i] = i;
-            }
-            cout << "Fill successful." << endl;
-        }
-        else if (ty == "randomfill") {
-            int va;
-            ss >> va;
-            for (int i = 0; i < va; i++) {
-                int pos = rand() % va;
-                mp[pos] = pos;
-            }
-            cout << "Fill successful." << endl;
-        }
-        else if (ty == "ins") {
-            int va1, va2;
-            ss >> va1 >> va2;
-            cout << (mp[va1] = va2) << endl;
-        }
-        else if (ty == "vis") {
-            int key;
-            ss >> key;
-            cout << mp[key] << endl;
-        }
-        else if (ty == "er") {
-            int key;
-            ss >> key;
-            auto it = mp.find(key);
-            mp.erase(it);
-        }
-        else if (ty == "erck") {
-            int key;
-            ss >> key;
-            auto it = mp.find(key);
-            mp.erase(it);
-            if (mp.checkColoringProperties())cout << "[Correct]Your RedBlackTree has correct coloring properties." << endl;
-            else {
-                cout << "[Invalid]Your RedBlackTree has wrong coloring properties." << endl;
-                mp.print();
-            }
-        }
-        else if (ty == "it") {
-            auto it = mp.begin();
-            int va;
-            ss >> va;
-            while (va--)it++;
-            cout << "key: " << it->first << " value: " << it->second << endl;
-        }
-        else if (ty == "sz") {
-            cout << mp.size() << endl;
-        }
-        else if (ty == "pr") {
-            mp.print();
-        }
-        else if (ty == "cl") {
-            mp.clear();
-            cout << "Clear successful." << endl;
-        }
-        else if (ty == "check") {
-            if (mp.checkColoringProperties())cout << "[Correct]Your RedBlackTree has correct coloring properties." << endl;
-            else {
-                cout << "[Invalid]Your RedBlackTree has wrong coloring properties." << endl;
-                mp.print();
-            }
-        }
-        else if (ty == "ly") {
-            cout << mp.layer() << endl;
-        }
-        else if (ty == "blly") {
-            cout << mp.blackLayer() << endl;
-        }
-        else if (ty == "exit") {
-            break;
-        }
-        else cout << "Invalid" << endl;
+        if (runCommandLineMap(mp, cmd))break;
+        if (cmd.substr(0, 2) == "er")runCommandLineMap(mp, "check"), runCommandLineMap(mp, "pr");
     }
 }
 
@@ -294,7 +307,14 @@ void testMapInsert() {
 }
 
 void testMapAll() {
-    srand(172817);
+#if TEST_SIZE >= 1000
+#define countdown
+#endif
+    int seed;
+//    cout << "Please input random number seed:" << endl;
+//    cin >> seed;
+    seed = 231;
+    srand(seed);
     std::map<int, string> answer;
     sjtu::map<int, string> result;
     int k, v;
@@ -304,12 +324,19 @@ void testMapAll() {
         string s = to_string(v);
         answer[k] = s;
         result[k] = s;
+#ifdef countdown
         if (i % (TEST_SIZE / 100) == 0)cout << "[count down] Inserting...\t" << i * 100 / TEST_SIZE + 1 << "%" << endl;
+#endif
     }
-    for (int i = 0; i < TEST_SIZE; i += 2) {
+//    result.print();
+    for (int i = 0; i < TEST_SIZE; i += 3) {
         answer.erase(answer.begin());
         result.erase(result.begin());
+//        result.print();
+        if (!result.checkColoringProperties())cout << "[Error]Wrong coloring properties at " << i << "." << endl;
+#ifdef countdown
         if (i % (TEST_SIZE / 100) == 0)cout << "[count down] Erasing...\t" << i * 100 / TEST_SIZE + 1 << "%" << endl;
+#endif
     }
     int cnt = 0;
     int size = answer.size();
@@ -320,10 +347,15 @@ void testMapAll() {
             result.print();
             return;
         }
+#ifdef countdown
         if (cnt % (size / 100) == 0)cout << "[count down] Checking...\t" << cnt * 100 / size + 1 << "%" << endl;
+#endif
         cnt++;
     }
-    if (result.checkColoringProperties())cout << "[Info]Accepted." << endl;
+    if (result.checkColoringProperties()) {
+        cout << "[Info]Accepted." << endl;
+//        testMapAll();
+    }
     else {
         cout << "[Error]Wrong coloring properties." << endl;
         result.print();
@@ -331,12 +363,12 @@ void testMapAll() {
 }
 
 int main() {
-    cout << "[System]Programme initializing..." << endl;
+    cout << "[System]Program initiating..." << endl;
     cout << "[Info]Welcome to RainyMemory's STLite project!" << endl;
 //    commandLinePriorityQueue();
 //    commandLineDeque();
-//    commandLineMap();
 //    testMapInsert();
+//    commandLineMap();
     testMapAll();
     return 0;
 }
