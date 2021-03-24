@@ -7,7 +7,7 @@
 #include "priority_queue/priority_queue.hpp"
 #include "deque/deque.hpp"
 
-#define TEST_SIZE 10000
+#define TEST_SIZE 1000000
 
 using std::cout;
 using std::endl;
@@ -311,17 +311,17 @@ void testMapAll() {
 #define countdown
 #endif
     int seed;
-//    cout << "Please input random number seed:" << endl;
-//    cin >> seed;
-    seed = 231;
+    cout << "Please input random number seed:" << endl;
+    cin >> seed;
     srand(seed);
     std::map<int, string> answer;
     sjtu::map<int, string> result;
-    int k, v;
+    int k, v, numcnt = 0;
     for (int i = 0; i < TEST_SIZE; i++) {
         k = rand();
         v = rand();
         string s = to_string(v);
+        if (result.count(k) == 0)numcnt++;
         answer[k] = s;
         result[k] = s;
 #ifdef countdown
@@ -329,13 +329,15 @@ void testMapAll() {
 #endif
     }
 //    result.print();
-    for (int i = 0; i < TEST_SIZE; i += 3) {
-        answer.erase(answer.begin());
-        result.erase(result.begin());
+    for (int i = 0; i < numcnt; i++) {
+        if (i % 3 == 0) {
+            answer.erase(answer.begin());
+            result.erase(result.begin());
+        }
 //        result.print();
-        if (!result.checkColoringProperties())cout << "[Error]Wrong coloring properties at " << i << "." << endl;
+//        if (!result.checkColoringProperties())cout << "[Error]Wrong coloring properties at " << i << "." << endl;
 #ifdef countdown
-        if (i % (TEST_SIZE / 100) == 0)cout << "[count down] Erasing...\t" << i * 100 / TEST_SIZE + 1 << "%" << endl;
+        if (i % (numcnt / 100) == 0)cout << "[count down] Erasing...\t\t" << i * 100 / numcnt + 1 << "%" << endl;
 #endif
     }
     int cnt = 0;
@@ -368,7 +370,7 @@ int main() {
 //    commandLinePriorityQueue();
 //    commandLineDeque();
 //    testMapInsert();
-//    commandLineMap();
-    testMapAll();
+    commandLineMap();
+//    testMapAll();
     return 0;
 }

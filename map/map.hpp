@@ -40,9 +40,11 @@ namespace sjtu {
         };
         
         class Node {
-            friend class map;
-        
         public:
+            enum rotateType {
+                LEFT, RIGHT, PARENT
+            };
+            
             colorType color = RED;
             value_type *value = nullptr;
             Node *parent = nullptr;
@@ -133,64 +135,47 @@ namespace sjtu {
                 }
             }
             
+            rotateType findRotateType() {
+                if (isRoot())return PARENT;
+                else if (isLeft())return LEFT;
+                else return RIGHT;
+            }
+            
+            Node *&self(rotateType r) {
+                switch (r) {
+                    case LEFT:
+                        return parent->left;
+                    case RIGHT:
+                        return parent->right;
+                    default:
+                        return parent->parent;
+                }
+            }
+            
             void rotateLeft() {
-                if (isRoot()) {
-                    parent->parent = right;
-                    right = right->left;
-                    if (right != nullptr)right->parent = this;
-                    parent->parent->parent = parent;
-                    parent->parent->left = this;
-                    parent = parent->parent;
-                }
-                else if (isLeft()) {
-                    parent->left = right;
-                    right = right->left;
-                    if (right != nullptr)right->parent = this;
-                    parent->left->parent = parent;
-                    parent->left->left = this;
-                    parent = parent->left;
-                }
-                else {
-                    parent->right = right;
-                    right = right->left;
-                    if (right != nullptr)right->parent = this;
-                    parent->right->parent = parent;
-                    parent->right->left = this;
-                    parent = parent->right;
-                }
+                rotateType r = findRotateType();
+                self(r) = right;
+                right = right->left;
+                if (right != nullptr)right->parent = this;
+                self(r)->parent = parent;
+                self(r)->left = this;
+                parent = self(r);
             }
             
             void rotateRight() {
-                if (isRoot()) {
-                    parent->parent = left;
-                    left = left->right;
-                    if (left != nullptr)left->parent = this;
-                    parent->parent->parent = parent;
-                    parent->parent->right = this;
-                    parent = parent->parent;
-                }
-                else if (isLeft()) {
-                    parent->left = left;
-                    left = left->right;
-                    if (left != nullptr)left->parent = this;
-                    parent->left->parent = parent;
-                    parent->left->right = this;
-                    parent = parent->left;
-                }
-                else {
-                    parent->right = left;
-                    left = left->right;
-                    if (left != nullptr)left->parent = this;
-                    parent->right->parent = parent;
-                    parent->right->right = this;
-                    parent = parent->right;
-                }
+                rotateType r = findRotateType();
+                self(r) = left;
+                left = left->right;
+                if (left != nullptr)left->parent = this;
+                self(r)->parent = parent;
+                self(r)->right = this;
+                parent = self(r);
             }
             
             void swapColor(Node *other) {
-                colorType t = other == nullptr ? BLACK : other->color;
+                colorType c = other == nullptr ? BLACK : other->color;
                 if (other != nullptr)other->setColor(color);
-                color = t;
+                setColor(c);
             }
             
             void swapPos(Node *other) {
@@ -245,7 +230,7 @@ namespace sjtu {
                 else if (node->left != nullptr)node = node->left->findMax();
                 else {
                     while (node->parent->left == node)node = node->parent;
-                    node = node->parent;
+                    if (node->left != node->parent)node = node->parent;
                 }
                 return node;
             }
@@ -401,6 +386,7 @@ namespace sjtu {
         }
         
         void RedBlackTreeErase(Node *now) {
+            nodeNumber--;
             if (now->childNumber() == 2) {
                 Node *su = now->findSuccessor();
                 now->swapPos(su), now->swapColor(su);
@@ -706,14 +692,8 @@ namespace sjtu {
         
         void erase(iterator pos) {
             if (pos == end() || pos.isInvalid() || find(pos.node->getKey()) != pos)throw runtime_error();
-            nodeNumber--;
-            if (nodeNumber == 0) {
-                delete header->parent;
-                header->parent = nullptr, header->left = header, header->right = header;
-                return;
-            }
             if (pos.node == header->left)header->left = header->left->findSuccessor();
-            else if (pos.node == header->right)header->right = header->right->findPrecursor();
+            if (pos.node == header->right)header->right = header->right->findPrecursor();
             RedBlackTreeErase(pos.node);
         }
         

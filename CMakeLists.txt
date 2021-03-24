@@ -3,4 +3,4 @@ project(STLite)
 
 set(CMAKE_CXX_STANDARD 14)
 
-add_executable(STLite map/data/seven.memcheck/code.cpp map/map.hpp map/exceptions.hpp map/utility.hpp)
+add_executable(STLite map/data/one/code.cpp map/map.hpp map/exceptions.hpp map/utility.hpp)
