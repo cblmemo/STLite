@@ -288,7 +288,7 @@ namespace sjtu {
             }
             return nullptr;
         }
-    
+        
         void rebalanceInsert(Node *now) {
             //rebalance red parent and black uncle
             if (now->isLeft()) {
@@ -400,12 +400,11 @@ namespace sjtu {
                     now->right->setColor(BLACK);
                     now->selfFromParent() = now->right;
                 }
-                delete now;
-                return;
             }
-            //now->childNumber() == 0
-            if (!now->isRed())rebalanceErase(now);
-            now->selfFromParent() = nullptr;
+            else { //now->childNumber() == 0
+                if (!now->isRed())rebalanceErase(now);
+                now->selfFromParent() = nullptr;
+            }
             delete now;
         }
     
@@ -597,15 +596,13 @@ namespace sjtu {
             }
         };
         
-        map() {
-            header = new Node;
+        map() : header(new Node) {
             header->parent = nullptr;
             header->left = header;
             header->right = header;
         }
         
-        map(const map &o) : nodeNumber(o.nodeNumber) {
-            header = new Node;
+        map(const map &o) : nodeNumber(o.nodeNumber), header(new Node) {
             header->parent = recursionConstruct(header, o.header->parent);
             header->left = o.empty() ? header : findNode(o.header->left->getKey());
             header->right = o.empty() ? header : findNode(o.header->right->getKey());
@@ -613,7 +610,7 @@ namespace sjtu {
         
         map &operator=(const map &o) {
             if (this == &o)return *this;
-            clear();
+            recursionClear(header->parent);
             nodeNumber = o.nodeNumber;
             header->parent = recursionConstruct(header, o.header->parent);
             header->left = o.empty() ? header : findNode(o.header->left->getKey());
@@ -622,7 +619,7 @@ namespace sjtu {
         }
         
         ~map() {
-            clear();
+            recursionClear(header->parent);
             delete header;
         }
         
