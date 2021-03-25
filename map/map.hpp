@@ -36,7 +36,7 @@ namespace sjtu {
         };
         
         enum positionType {
-            NONE, OUTBOARD, INBOARD, BOTH //same, different
+            NONE, OUTBOARD, INBOARD, BOTH
         };
         
         class Node {
@@ -94,7 +94,7 @@ namespace sjtu {
             }
             
             bool isHeader() const {
-                if (parent == nullptr)return true; //empty tree
+                if (parent == nullptr)return true;
                 return parent->parent == this && value == nullptr;
             }
             
@@ -179,7 +179,8 @@ namespace sjtu {
             }
             
             void swapPos(Node *other) {
-                if (parent == other) {
+                if (other->parent == this)other->swapPos(this);
+                else if (parent == other) {
                     bool le = isLeft();
                     Node *l = left, *r = right, *sib = getSibling();
                     other->selfFromParent() = this, parent = other->parent, other->parent = this;
@@ -189,9 +190,6 @@ namespace sjtu {
                     other->left = l, other->right = r;
                     if (le)right = sib, left = other;
                     else left = sib, right = other;
-                }
-                else if (other->parent == this) {
-                    other->swapPos(this);
                 }
                 else {
                     selfFromParent() = other;
@@ -244,31 +242,6 @@ namespace sjtu {
                 }
                 return node;
             }
-            
-            void rebalanceRedParentAndBlackUncle() {
-                if (isLeft()) {
-                    if (parent->isLeft()) {
-                        parent->parent->rotateRight();
-                        parent->swapColor(parent->right);
-                    }
-                    else { //parent->isRight()
-                        parent->rotateRight();
-                        parent->rotateLeft();
-                        swapColor(left);
-                    }
-                }
-                else { //isRight()
-                    if (parent->isRight()) {
-                        parent->parent->rotateLeft();
-                        parent->swapColor(parent->left);
-                    }
-                    else { //parent->isLeft()
-                        parent->rotateLeft();
-                        parent->rotateRight();
-                        swapColor(right);
-                    }
-                }
-            }
 
 #ifdef debug
             
@@ -315,17 +288,42 @@ namespace sjtu {
             }
             return nullptr;
         }
+    
+        void rebalanceInsert(Node *now) {
+            //rebalance red parent and black uncle
+            if (now->isLeft()) {
+                if (now->parent->isLeft()) {
+                    now->parent->parent->rotateRight();
+                    now->parent->swapColor(now->parent->right);
+                }
+                else { //parent->isRight()
+                    now->parent->rotateRight();
+                    now->parent->rotateLeft();
+                    now->swapColor(now->left);
+                }
+            }
+            else { //isRight()
+                if (now->parent->isRight()) {
+                    now->parent->parent->rotateLeft();
+                    now->parent->swapColor(now->parent->left);
+                }
+                else { //parent->isLeft()
+                    now->parent->rotateLeft();
+                    now->parent->rotateRight();
+                    now->swapColor(now->right);
+                }
+            }
+        }
         
         Node *findInsertPos(const value_type &value) {
             Node *pa = header;
             Node *now = header->parent;
             while (now != nullptr) {
-                //adjust two red child case
-                if (now->left != nullptr && now->right != nullptr && now->left->isRed() && now->right->isRed()) {
+                if (now->redChildNumber() == 2) {
                     now->left->setColor(BLACK), now->right->setColor(BLACK);
                     if (!now->isRoot()) {
                         now->setColor(RED);
-                        if (now->parent->isRed())now->rebalanceRedParentAndBlackUncle();
+                        if (now->parent->isRed())rebalanceInsert(now);
                     }
                 }
                 pa = now;
@@ -352,7 +350,7 @@ namespace sjtu {
                 insertPos->right = insertNode;
             }
             insertNode->parent = insertPos;
-            if (insertNode->parent->isRed())insertNode->rebalanceRedParentAndBlackUncle();
+            if (insertNode->parent->isRed())rebalanceInsert(insertNode);
             return iterator(insertNode);
         }
         
@@ -643,11 +641,9 @@ namespace sjtu {
         T &operator[](const Key &key) {
             Node *pos = findNode(key);
             if (pos != nullptr)return pos->value->second;
-            else {
-                value_type value(key, T());
-                iterator temp = RedBlackTreeInsert(findInsertPos(value), value);
-                return temp.node->value->second;
-            }
+            value_type value(key, T());
+            iterator temp = RedBlackTreeInsert(findInsertPos(value), value);
+            return temp.node->value->second;
         }
         
         const T &operator[](const Key &key) const {
