@@ -227,7 +227,7 @@ namespace sjtu {
                 if (node->isHeader())node = node->right;
                 else if (node->left != nullptr)node = node->left->findMax();
                 else {
-                    while (node->parent->left == node)node = node->parent;
+                    while (node->isLeft())node = node->parent;
                     if (node->left != node->parent)node = node->parent;
                 }
                 return node;
@@ -237,7 +237,7 @@ namespace sjtu {
                 Node *node = const_cast<Node *>(this);
                 if (node->right != nullptr)node = node->right->findMin();
                 else {
-                    while (node->parent->right == node)node = node->parent;
+                    while (node->isRight())node = node->parent;
                     if (node->right != node->parent)node = node->parent;
                 }
                 return node;
