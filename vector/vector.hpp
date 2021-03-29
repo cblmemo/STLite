@@ -277,22 +277,18 @@ namespace sjtu {
         }
         
         iterator begin() {
-            if (tail == 0)throw container_is_empty();
             return iterator(this, 0);
         }
         
         const_iterator cbegin() const {
-            if (tail == 0)throw container_is_empty();
             return const_iterator(this, 0);
         }
         
         iterator end() {
-            if (tail == 0)throw container_is_empty();
             return iterator(this, tail);
         }
         
         const_iterator cend() const {
-            if (tail == 0)throw container_is_empty();
             return const_iterator(this, tail);
         }
         
