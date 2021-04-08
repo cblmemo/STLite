@@ -7,7 +7,7 @@
 
 #include <cstddef>
 
-//#define debug
+#define debug
 
 #ifdef debug
 
@@ -290,8 +290,24 @@ namespace sjtu {
         }
         
         inline void adjustSize() {
-            if (blockNum >= BLOCK_SIZE * 4)BLOCK_SIZE <<= 1, MERGE_THRESHOLD = BLOCK_SIZE * 0.9;
-            if (BLOCK_SIZE > 160 && blockNum * 4 <= BLOCK_SIZE)BLOCK_SIZE >>= 1, MERGE_THRESHOLD = BLOCK_SIZE * 0.9;
+            if (blockNum == BLOCK_SIZE * 4) {
+                BLOCK_SIZE <<= 1, MERGE_THRESHOLD = BLOCK_SIZE * 0.9;
+                blockTail = blockTail->preBlock;
+                Block *now = blockHead;
+                while (now != nullptr) {
+                    now->mergeBlock();
+                    now = now->nextBlock;
+                }
+            }
+            else if (BLOCK_SIZE > 160 && blockNum * 4 == BLOCK_SIZE) {
+                BLOCK_SIZE >>= 1, MERGE_THRESHOLD = BLOCK_SIZE * 0.9;
+                Block *now = blockHead;
+                while (now != nullptr) {
+                    now->splitBlock(now->elementNum >> 1);
+                    now = now->nextBlock, now = now->nextBlock;
+                }
+                blockTail = blockTail->nextBlock;
+            }
         }
     
     public:

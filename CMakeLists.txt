@@ -3,4 +3,4 @@ project(STLite)
 
 set(CMAKE_CXX_STANDARD 14)
 
-add_executable(STLite deque/data/one/code.cpp deque/deque.hpp deque/exceptions.hpp deque/utility.hpp)
+add_executable(STLite main.cpp deque/deque.hpp deque/exceptions.hpp deque/utility.hpp)

@@ -1541,13 +1541,13 @@ int main() {
 		int n = sizeof(TEST_B) / sizeof(CheckerPair);
 		for (int i = 0; i < n; i++) {
 			printf("Test %d: %-59s", i + 1, TEST_B[i].first);
-			cout.flush();
+			std::cout.flush();
 			std::pair<bool, double> result = TEST_B[i].second();
 #ifndef __OFFICAL
 			printf("%.2f\n", result.second);
 #else
 			puts("PASSED");
-            cout.flush();
+            std::cout.flush();
 #endif
 		}
 		global.stop();
