@@ -7,7 +7,7 @@
 
 #include <cstddef>
 
-#define debug
+//#define debug
 
 #ifdef debug
 
@@ -19,21 +19,11 @@ using std::endl;
 #endif
 
 namespace sjtu {
-    
     template<class T>
     class deque {
     private:
-        enum sizeInfo {
-            BLOCK_SIZE = 320,
-            SPLIT_REMAIN = 160,
-            MERGE_THRESHOLD = 288
-        };
-//
-//        enum sizeInfo {
-//            BLOCK_SIZE = 4,
-//            SPLIT_REMAIN = 2,
-//            MERGE_THRESHOLD = 3
-//        };
+        int BLOCK_SIZE = 160;
+        int MERGE_THRESHOLD = 144;
         
         class Element {
         public:
@@ -93,22 +83,13 @@ namespace sjtu {
             
             Block &operator=(const Block &o) = delete;
             
-            void clearElement() {
-                Element *temp = elementHead;
-                while (elementHead != nullptr) {
-                    elementHead = elementHead->nextElement;
-                    delete temp;
-                    temp = elementHead;
-                }
-            }
-            
-            Block *splitBlock() {
+            Block *splitBlock(int REMAIN) {
                 //add a new block after *this
-                Block *newBlock = new Block(elementNum - SPLIT_REMAIN, this, nextBlock, nullptr, nullptr);
-                elementNum = SPLIT_REMAIN;
+                Block *newBlock = new Block(elementNum - REMAIN, this, nextBlock, nullptr, nullptr);
+                elementNum = REMAIN;
                 if (nextBlock != nullptr)nextBlock->preBlock = newBlock;
                 nextBlock = newBlock;
-                Element *temp = findElement(SPLIT_REMAIN);
+                Element *temp = findElement(REMAIN);
                 newBlock->elementHead = temp;
                 newBlock->elementTail = elementTail;
                 elementTail = temp->preElement;
@@ -147,7 +128,7 @@ namespace sjtu {
                 return temp;
             }
             
-            bool insertElement(deque<T> *dq, int index, Element *o) {
+            bool insertElement(deque<T> *dq, int index, Element *o, int SIZE) {
                 if (elementNum == 0) {
                     elementHead = o;
                     elementTail = o;
@@ -175,8 +156,8 @@ namespace sjtu {
                 }
                 elementNum++;
                 dq->len++;
-                if (elementNum == BLOCK_SIZE) {
-                    Block *newBlock = splitBlock();
+                if (elementNum == SIZE) {
+                    Block *newBlock = splitBlock(SIZE >> 1);
                     if (this == dq->blockTail)dq->blockTail = newBlock;
                     dq->blockNum++;
                     return true;
@@ -184,7 +165,7 @@ namespace sjtu {
                 else return false;
             }
             
-            bool eraseElement(deque<T> *dq, int index) {
+            bool eraseElement(deque<T> *dq, int index, int THRESHOLD) {
                 if (elementNum == 0)throw container_is_empty();
                 if (elementNum == 1) {
                     delete elementHead;
@@ -227,7 +208,7 @@ namespace sjtu {
                     }
                     return true;
                 }
-                if (nextBlock != nullptr && elementNum + nextBlock->elementNum < MERGE_THRESHOLD) {
+                if (nextBlock != nullptr && elementNum + nextBlock->elementNum < THRESHOLD) {
                     if (this == dq->blockTail->preBlock)dq->blockTail = this;
                     mergeBlock();
                     dq->blockNum--;
@@ -290,8 +271,8 @@ namespace sjtu {
         void initialize() {
             blockHead = new Block(0, nullptr, nullptr, nullptr, nullptr);
             blockTail = blockHead;
-            blockNum = 1;
-            len = 0;
+            blockNum = 1, len = 0;
+            BLOCK_SIZE = 160, MERGE_THRESHOLD = 144;
         }
         
         void pushBackBlock(Block *o) {
@@ -306,6 +287,11 @@ namespace sjtu {
             }
             blockNum++;
             len += o->elementNum;
+        }
+        
+        inline void adjustSize() {
+            if (blockNum >= BLOCK_SIZE * 4)BLOCK_SIZE <<= 1, MERGE_THRESHOLD = BLOCK_SIZE * 0.9;
+            if (BLOCK_SIZE > 160 && blockNum * 4 <= BLOCK_SIZE)BLOCK_SIZE >>= 1, MERGE_THRESHOLD = BLOCK_SIZE * 0.9;
         }
     
     public:
@@ -353,11 +339,6 @@ namespace sjtu {
                 return *this;
             }
             
-            /**
-             * return a new iterator which pointer n-next elements
-             *   if there are not enough elements, iterator becomes invalid
-             * as well as operator-
-             */
             iterator operator+(const int &n) const {
                 if (nowIndex + n > ptr->len || nowIndex + n < 0)throw invalid_iterator();
                 return iterator(ptr, nowIndex + n);
@@ -368,8 +349,6 @@ namespace sjtu {
                 return iterator(ptr, nowIndex - n);
             }
             
-            // return th distance between two iterator,
-            // if these two iterators points to different vectors, throw invaild_iterator.
             int operator-(const iterator &rhs) const {
                 if (ptr != rhs.ptr)throw invalid_iterator();
                 return nowIndex - rhs.nowIndex;
@@ -462,9 +441,6 @@ namespace sjtu {
                 return nowElement->value;
             }
             
-            /**
-             * a operator to check whether two iterators are same (pointing to the same memory).
-             */
             bool operator==(const iterator &rhs) const {
                 return ptr == rhs.ptr && nowBlock == rhs.nowBlock && nowElement == rhs.nowElement && nowIndex == rhs.nowIndex;
             }
@@ -473,9 +449,6 @@ namespace sjtu {
                 return ptr == rhs.ptr && nowBlock == rhs.nowBlock && nowElement == rhs.nowElement && nowIndex == rhs.nowIndex;
             }
             
-            /**
-             * some other operator for iterator.
-             */
             bool operator!=(const iterator &rhs) const {
                 return !((*this) == rhs);
             }
@@ -487,9 +460,7 @@ namespace sjtu {
         
         class const_iterator {
             friend class deque;
-            
-            // it should has similar member method as iterator.
-            //  and it should be able to construct from an iterator.
+        
         private:
             bool invalid = false;
             const deque<T> *ptr = nullptr;
@@ -687,10 +658,6 @@ namespace sjtu {
             return *this;
         }
         
-        /**
-         * access specified element with bounds checking
-         * throw index_out_of_bound if out of bound.
-         */
         T &at(const size_t &pos) {
             if (pos < 0 || pos >= len)throw index_out_of_bound();
             int index;
@@ -723,27 +690,16 @@ namespace sjtu {
             return *(target->value);
         }
         
-        /**
-         * access the first element
-         * throw container_is_empty when the container is empty.
-         */
         const T &front() const {
             if (len == 0)throw container_is_empty();
             return *(blockHead->elementHead->value);
         }
         
-        /**
-         * access the last element
-         * throw container_is_empty when the container is empty.
-         */
         const T &back() const {
             if (len == 0)throw container_is_empty();
             return *(blockTail->elementTail->value);
         }
         
-        /**
-         * returns an iterator to the beginning.
-         */
         iterator begin() {
             if (blockNum == 0)initialize();
             if (len == 0)return end();
@@ -755,9 +711,6 @@ namespace sjtu {
             return const_iterator(this, blockHead, blockHead->elementHead, 0);
         }
         
-        /**
-         * returns an iterator to the end.
-         */
         iterator end() {
             if (blockNum == 0)initialize();
             return iterator(this, nullptr, nullptr, len);
@@ -767,23 +720,14 @@ namespace sjtu {
             return const_iterator(this, nullptr, nullptr, len);
         }
         
-        /**
-         * checks whether the container is empty.
-         */
         bool empty() const {
             return len == 0;
         }
         
-        /**
-         * returns the number of elements
-         */
         size_t size() const {
             return len;
         }
         
-        /**
-         * clears the contents
-         */
         void clear() {
             Block *tempDelete;
             while (blockHead != nullptr) {
@@ -795,86 +739,58 @@ namespace sjtu {
             initialize();
         }
         
-        /**
-         * inserts elements at the specified locat on in the container.
-         * inserts value before pos
-         * returns an iterator pointing to the inserted value
-         *     throw if the iterator is invalid or it point to a wrong place.
-         */
         iterator insert(iterator pos, const T &value) {
-            if (pos.invalid)throw invalid_iterator();
+            adjustSize();
             if (blockNum == 0)initialize();
-            if (pos.nowIndex < 0 || pos.nowIndex > len)throw invalid_iterator();
-            if (pos.ptr != this)throw invalid_iterator();
+            if (pos.invalid || pos.nowIndex < 0 || pos.nowIndex > len || pos.ptr != this)throw invalid_iterator();
             if (pos.nowIndex == len) {
                 push_back(value);
                 return iterator(this, blockTail, blockTail->elementTail, len - 1);
             }
-            else {
-                int index;
-                Block *now = findBlock(pos.nowIndex, index);
-                Element *temp = new Element(value);
-                if (now->insertElement(this, index, temp))now = findBlock(pos.nowIndex, index);
-                return iterator(this, pos.nowIndex);
-            }
+            int index;
+            Block *now = findBlock(pos.nowIndex, index);
+            Element *temp = new Element(value);
+            now->insertElement(this, index, temp, BLOCK_SIZE);
+            return iterator(this, pos.nowIndex);
         }
         
-        /**
-         * removes specified element at pos.
-         * removes the element at pos.
-         * returns an iterator pointing to the following element, if pos pointing to the last element, end() will be returned.
-         * throw if the container is empty, the iterator is invalid or it points to a wrong place.
-         */
         iterator erase(iterator pos) {
+            adjustSize();
             if (blockNum == 0)initialize();
             if (len == 0)throw container_is_empty();
-            if (pos.invalid)throw invalid_iterator();
-            if (pos.nowIndex < 0 || pos.nowIndex >= len)throw invalid_iterator();
-            if (pos.ptr != this)throw invalid_iterator();
+            if (pos.invalid || pos.nowIndex < 0 || pos.nowIndex >= len || pos.ptr != this)throw invalid_iterator();
             bool flag = pos.nowIndex == len - 1;
             int index;
             Block *now = findBlock(pos.nowIndex, index);
-            if (now->eraseElement(this, index))now = findBlock(pos.nowIndex, index);
-            Element *temp = now->findElement(index);
-//            if(temp== nullptr)throw invalid_iterator();
+            now->eraseElement(this, index, MERGE_THRESHOLD);
             if (flag)return iterator(this, nullptr, nullptr, len);
             else return iterator(this, pos.nowIndex);
         }
         
-        /**
-         * adds an element to the end
-         */
         void push_back(const T &value) {
+            adjustSize();
             if (blockNum == 0)initialize();
-            blockTail->insertElement(this, blockTail->elementNum, new Element(value));
+            blockTail->insertElement(this, blockTail->elementNum, new Element(value), BLOCK_SIZE);
         }
         
-        /**
-         * removes the last element
-         *     throw when the container is empty.
-         */
         void pop_back() {
+            adjustSize();
             if (blockNum == 0)initialize();
             if (len == 0)throw container_is_empty();
-            blockTail->eraseElement(this, -1);
+            blockTail->eraseElement(this, -1, MERGE_THRESHOLD);
         }
         
-        /**
-         * inserts an element to the beginning.
-         */
         void push_front(const T &value) {
+            adjustSize();
             if (blockNum == 0)initialize();
-            blockHead->insertElement(this, 0, new Element(value));
+            blockHead->insertElement(this, 0, new Element(value), BLOCK_SIZE);
         }
         
-        /**
-         * removes the first element.
-         *     throw when the container is empty.
-         */
         void pop_front() {
+            adjustSize();
             if (blockNum == 0)initialize();
             if (len == 0)throw container_is_empty();
-            blockHead->eraseElement(this, 0);
+            blockHead->eraseElement(this, 0, MERGE_THRESHOLD);
         }
 
 #ifdef debug

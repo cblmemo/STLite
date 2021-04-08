@@ -7,7 +7,7 @@
 
 namespace sjtu {
 
-class exception {
+class exception : public std::exception {
 protected:
 	const std::string variant = "";
 	std::string detail = "";
